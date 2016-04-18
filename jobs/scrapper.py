@@ -8,8 +8,10 @@ import pymongo
 import sys
 import math
 import time
-import id_list
+import re
 from collections import defaultdict
+
+import id_list
 
 stop_words = set([u'i',
  u'me',
@@ -172,7 +174,7 @@ class Unigram_Classifier_DB:
 
     def setup_index(self):
         classifier_tweets_index = [('tweet.tweet_id', pymongo.ASCENDING), ('event', pymongo.ASCENDING)]
-        for affiliation in affiliations:
+        for affiliation in self.affiliations:
             classifier_tweets_index.append(('scores.'+affiliation, pymongo.ASCENDING))
         self.classifier_tweets.create_index(classifier_tweets_index)
         self.classifier_meta_event.create_index([('event', pymongo.ASCENDING), ('affiliation', pymongo.ASCENDING)])
@@ -187,12 +189,12 @@ class Unigram_Classifier_DB:
     def get_event_meta(self, event):
         pipline = [{'$match'  : {'event': event}},
                    {'$project': {'affiliation': 1, 'count': { '$size': '$user_ids' }}}]
-        return {c['affiliation']:c['count'] for c in self.classifier_meta_event.aggragate(pipline)}
+        return {c['affiliation']:c['count'] for c in self.classifier_meta_event.aggregate(pipline)}
 
     def get_term_meta(self, event, term):
         pipline = [{'$match'  : {'event': event, 'term': term}},
                    {'$project': {'affiliation': 1, 'count': { '$size': '$user_ids' }}}]
-        return {c['affiliation']:c['count'] for c in self.classifier_meta_term.aggragate(pipline)}
+        return {c['affiliation']:c['count'] for c in self.classifier_meta_term.aggregate(pipline)}
 
     def store_tweet(self, tweet, event, scores):
         assert len(scores) == len(self.affiliations)
@@ -200,7 +202,7 @@ class Unigram_Classifier_DB:
         self.classifier_tweets.insert({'tweet': tweet, 'event': event, 'scores': scores})
 
     def clear_redundancy(self):
-        for event in self.dirty_events;
+        for event in self.dirty_events:
             tweets = list(self.classifier_tweets.find({'event': event}, ['scores']))
             to_remove = set([x['_id'] for x in tweets])
             for affiliation in self.affiliations:
@@ -217,13 +219,13 @@ class Unigram_Classifier:
 
     def get_tags(self, tweet):
         text = tweet['text']
-        return set({tag.strip("#") for tag in text.split() if tag.startswith("#")})
+        return set({tag.strip("#") for tag in re.split("'| ", text) if tag.startswith("#")})
 
     def clean_text(self, text):
         return re.sub(r"http\S+", "", text)
 
     def get_terms(self, tweet):
-        text = clean_text(weet['text'])
+        text = self.clean_text(tweet['text'])
         terms = re.findall("[A-Z]{2,}(?![a-z])|[A-Z][a-z]+(?=[A-Z])|[\'\w\-]+", text)
         terms = [t.lower() for t in terms]
         terms = [t for t in terms if t not in stop_words]
@@ -232,7 +234,7 @@ class Unigram_Classifier:
     def calculate_score(self, terms, event):
         scores = defaultdict(float)
         event_counts = self.db.get_event_meta(event)
-        if any([c < 250 for c in event_counts.values()])
+        if any([c < 250 for c in event_counts.values()]):
             return None
         for t in terms:
             term_counts = self.db.get_term_meta(event, t)
@@ -249,28 +251,39 @@ class Unigram_Classifier:
         terms = self.get_terms(tweet)
         events = self.get_tags(tweet)
         user_id = tweet['user_id']
-        for e in events:
+        for event in events:
             self.db.update_event_inc(event, user_id, affiliation)
-            for t in terms:
+            for term in terms:
                 self.db.update_term_inc(event, term, user_id, affiliation)
-            scores = calculate_score(terms, e)
+            scores = self.calculate_score(terms, event)
             if scores == None:
                 continue
-            self.db.store_tweet(tweet, e, scores)
+            self.db.store_tweet(tweet, event, scores)
 
 class Scrapper_META_DB:
     def __init__(self, url, db_name):
         self.client = MongoClient(url)
         self.db = self.client[db_name]
         self.scrape_meta_collection = self.db['scraper_meta']
+        self.lastest_tweet_id_cache = {}
 
-    def store_latest_tweet_id_of_user(user_id, tweet_id):
-        self.scrape_meta_collection.update_one({'user_id':user_id}, {"$set": {'latest_tweet_id': tweet_id}}, upsert=True)
+    def update_latest_tweet_id_of_user(self, user_id, tweet_id):
+        if user_id not in self.lastest_tweet_id_cache:
+            raise Exception('should excute get before store')
+        if tweet_id > self.lastest_tweet_id_cache[user_id]:
+            self.lastest_tweet_id_cache[user_id] = tweet_id
+            self.scrape_meta_collection.update_one({'user_id':user_id}, {"$set": {'latest_tweet_id': tweet_id}}, upsert=True)
 
-    def get_latest_tweet_id_of_user(user_id):
-        return self.scrape_meta_collection.find_one({'user_id':user_id})['latest_tweet_id']
+    def get_latest_tweet_id_of_user(self, user_id):
+        row = self.scrape_meta_collection.find_one({'user_id':user_id})
+        if row == None:
+            self.lastest_tweet_id_cache[user_id] = -1
+            return None
+        tweet_id = row['latest_tweet_id']
+        self.lastest_tweet_id_cache[user_id] = int(tweet_id)
+        return tweet_id
 
-    def close():
+    def close(self):
         self.client.close()
 
 class Scrapper:
@@ -304,6 +317,7 @@ class Scrapper:
             return
         for tweet in tweets:
             self.callback(tweet, target)
+            self.scrapper_meta.update_latest_tweet_id_of_user(user_id, tweet['tweet_id'])
 
     def run(self, targets):
         i = 0
@@ -380,9 +394,9 @@ def build_targets(democrats, republicans):
         if i >= len(democrats) and i >= len(republicans):
             break
         if i < len(democrats):
-            targets.append({'user_id': democrats[i],   'affiliation': 'democrats' }))
+            targets.append({'user_id': democrats[i],   'affiliation': 'democrats' })
         if i < len(id_list.republicans):
-            targets.append({'user_id': republicans[i], 'affiliation': 'republicans' }))
+            targets.append({'user_id': republicans[i], 'affiliation': 'republicans' })
         i += 1
     return targets
 
