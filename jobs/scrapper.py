@@ -216,7 +216,7 @@ class Unigram_Classifier_DB:
 
     def get_term_meta(self, event, term):
         if (event, term) in self.classifier_meta_term_cache:
-            return {affiliation:len(user_ids) for affiliation,user_ids in self.classifier_meta_term_cache[(event, term).items()]}
+            return {affiliation:len(user_ids) for affiliation,user_ids in self.classifier_meta_term_cache[(event, term)].items()}
         data = {c['affiliation']:set(c['user_ids']) for c in self.classifier_meta_term.find({'event': event, 'term': term})}
         for affiliation in self.affiliations:
             if affiliation not in data:
@@ -232,27 +232,28 @@ class Unigram_Classifier_DB:
         self.classifier_tweets_cache[event].append({'tweet': tweet, 'event': event, 'scores': scores})
 
     def flush_tweets(self):
-        to_add_all = set()
+        to_add_all = []
         to_remove_all = set()
         for c in list(self.classifier_tweets.find({'event': {'$in':list(self.classifier_tweets_cache.keys())}}, ['scores'])):
             self.classifier_tweets_cache[c['event']].append(c)
         print 'flush tweets', len(self.classifier_tweets_cache)
         for event, tweets in self.classifier_tweets_cache.items():
-            to_remove = set([x['_id'] for x in tweets])
-            to_add = set()
+            to_remove = set([x['_id'] for x in tweets if '_id' in x])
+            to_add = {}
             for affiliation in self.affiliations:
                 tweets.sort(key = lambda x: x['scores'][affiliation])
-                print to_remove.intersection_update([x['_id'] for x in tweets[100:-100] if '_id' in x])
-                print to_add.update([x for x in tweets[0:100] if '_id' not in x])
-                print to_add.update([x for x in tweets[-100:] if '_id' not in x])
-            to_add_all.update(to_add)
+                to_remove.intersection_update([x['_id'] for x in tweets[100:-100] if '_id' in x])
+                for x in tweets[0:100] + tweets[-100:]:
+                    if '_id' not in x:
+                        to_add[(x['event'], x['tweet']['tweet_id'])] = x
+            to_add_all += list(to_add.values())
             to_remove_all.update(to_remove)
         if to_remove_all:
             print 'remove tweets', len(to_remove_all)
             self.classifier_tweets.remove({'_id':{'$in':list(to_remove_all)}})
         if to_add_all:
             print 'add tweets', len(to_add_all)
-            self.classifier_tweets.insert_many(list(to_add_all))
+            self.classifier_tweets.insert_many(to_add_all)
         self.classifier_tweets_cache.clear()
 
     def flush(self):
@@ -299,10 +300,10 @@ class Unigram_Classifier:
         for t in terms:
             term_counts = self.db.get_term_meta(event, t)
             for affiliation, term_count in term_counts.items():
-                other_term_count = sum([c for a,c in term_counts.items() if c != affiliation])
-                other_event_count = sum([c for a,c in event_counts.items() if c != affiliation])
-                other_portion = float(other_term_count)/other_event_count
-                this_portion = float(term_count)/event_counts[affiliation]
+                other_term_count = sum([c for a,c in term_counts.items() if a != affiliation])
+                other_event_count = sum([c for a,c in event_counts.items() if a != affiliation])
+                other_portion = (float(other_term_count)+1)/(other_event_count+1)
+                this_portion = (float(term_count)+1)/(event_counts[affiliation]+1)
                 new_score = this_portion * math.log(this_portion / other_portion)
                 scores[affiliation] = max(scores[affiliation], new_score)
         return scores
