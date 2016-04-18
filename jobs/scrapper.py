@@ -168,9 +168,11 @@ class Unigram_Classifier_DB:
         self.classifier_tweets = self.db['unigram_classifier_tweets']
         self.classifier_meta_event = self.db['unigram_classifier_meta_event']
         self.classifier_meta_term = self.db['unigram_classifier_meta_term']
+        self.classifier_tweets_cache = []
+        self.classifier_meta_event_cache = {}
+        self.classifier_meta_term_cache = {}
         self.affiliations = affiliations
         self.setup_index()
-        self.dirty_events = set()
 
     def setup_index(self):
         classifier_tweets_index = [('tweet.tweet_id', pymongo.ASCENDING), ('event', pymongo.ASCENDING)]
@@ -180,35 +182,72 @@ class Unigram_Classifier_DB:
         self.classifier_meta_event.create_index([('event', pymongo.ASCENDING), ('affiliation', pymongo.ASCENDING)])
         self.classifier_meta_term.create_index([('event', pymongo.ASCENDING), ('term', pymongo.ASCENDING), ('affiliation', pymongo.ASCENDING)])
 
+    def clear(self):
+        self.classifier_tweets.delete_many({})
+        self.classifier_meta_event.delete_many({})
+        self.classifier_meta_term.delete_many({})
+
     def update_event_inc(self, event, user_id, affiliation):
-        self.classifier_meta_event.update_one({'event':event, 'affiliation':affiliation}, {"$addToSet": {'user_ids': [user_id]}}, upsert=True)
+        if event not in self.classifier_meta_event_cache:
+            self.get_event_meta(event)
+        self.classifier_meta_event_cache[event][affiliation].add(user_id)
 
     def update_term_inc(self, event, term, user_id, affiliation):
-        self.classifier_meta_term.update_one({'event':event, 'term':term, 'affiliation':affiliation}, {"$addToSet": {'user_ids': [user_id]}}, upsert=True)
+        if (event, term) not in self.classifier_meta_term_cache:
+            self.get_term_meta(event, term)
+        self.classifier_meta_term_cache[(event, term)][affiliation].add(user_id)
 
     def get_event_meta(self, event):
-        pipline = [{'$match'  : {'event': event}},
-                   {'$project': {'affiliation': 1, 'count': { '$size': '$user_ids' }}}]
-        return {c['affiliation']:c['count'] for c in self.classifier_meta_event.aggregate(pipline)}
+        if event in self.classifier_meta_event_cache:
+            return {c['affiliation']:len(c['user_ids']) for c in self.classifier_meta_event_cache[event]}
+        data = {c['affiliation']:set(c['user_ids']) for c in self.classifier_meta_event.find({'event': event})}
+        for affiliation in self.affiliations:
+            if affiliation not in data:
+                data[affiliation] = set()
+        self.classifier_meta_event_cache['event'] = data
+        return self.get_event_meta(event)
+        #pipline = [{'$match'  : {'event': event}},
+        #           {'$project': {'affiliation': 1, 'count': { '$size': '$user_ids' }}}]
+        #return {c['affiliation']:c['count'] for c in self.classifier_meta_event.aggregate(pipline)}
 
     def get_term_meta(self, event, term):
-        pipline = [{'$match'  : {'event': event, 'term': term}},
-                   {'$project': {'affiliation': 1, 'count': { '$size': '$user_ids' }}}]
-        return {c['affiliation']:c['count'] for c in self.classifier_meta_term.aggregate(pipline)}
+        if (event, term) in self.classifier_meta_term_cache:
+            return {c['affiliation']:len(c['user_ids']) for c in self.classifier_meta_term_cache[(event, term)]}
+        data = {c['affiliation']:set(c['user_ids']) for c in self.classifier_meta_term.find({'event': event, 'term': term})}
+        for affiliation in self.affiliations:
+            if affiliation not in data:
+                data[affiliation] = set()
+        self.classifier_meta_term_cache[(event, term)] = data
+        return self.get_event_meta(event)
+        #pipline = [{'$match'  : {'event': event, 'term': term}},
+        #           {'$project': {'affiliation': 1, 'count': { '$size': '$user_ids' }}}]
+        #return {c['affiliation']:c['count'] for c in self.classifier_meta_term.aggregate(pipline)}
 
     def store_tweet(self, tweet, event, scores):
         assert len(scores) == len(self.affiliations)
-        self.dirty_events.add(event)
-        self.classifier_tweets.insert({'tweet': tweet, 'event': event, 'scores': scores})
+        self.classifier_tweets_cache.append({'tweet': tweet, 'event': event, 'scores': scores})
 
-    def clear_redundancy(self):
-        for event in self.dirty_events:
+    def clear_redundancy(self, dirty_events):
+        for event in dirty_events:
             tweets = list(self.classifier_tweets.find({'event': event}, ['scores']))
             to_remove = set([x['_id'] for x in tweets])
             for affiliation in self.affiliations:
                 tweets.sort(key = lambda x: x['scores'][affiliation])
                 to_remove.intersection_update([x['_id'] for x in tweets[100:-100]])
             self.classifier_tweets.remove({'_id':{'$in':list(to_remove)}})
+
+    def flush(self):
+        dirty_events = set([x['event'] for x in self.classifier_tweets_cache])
+        self.classifier_tweets.insert_many(self.classifier_tweets_cache)
+        self.classifier_tweets_cache = []
+        for event, data in self.classifier_meta_event_cache.items():
+            for affiliation, user_ids in data:
+                self.classifier_meta_event.update_one({'event':event, 'affiliation':affiliation}, {"$addToSet": {'user_ids': list(user_ids)}}, upsert=True)
+        for key, data in self.classifier_meta_term_cache.items():
+            event, term = key
+            for affiliation, user_ids in data:
+                self.classifier_meta_term.update_one({'event':event, 'term':term, 'affiliation':affiliation}, {"$addToSet": {'user_ids': list(user_ids)}}, upsert=True)
+        self.clear_redundancy(dirty_events)
 
     def close(self):
         self.client.close()
@@ -269,19 +308,29 @@ class Scrapper_META_DB:
 
     def update_latest_tweet_id_of_user(self, user_id, tweet_id):
         if user_id not in self.lastest_tweet_id_cache:
-            raise Exception('should excute get before store')
+            get_latest_tweet_id_of_user(user_id)
         if tweet_id > self.lastest_tweet_id_cache[user_id]:
             self.lastest_tweet_id_cache[user_id] = tweet_id
-            self.scrape_meta_collection.update_one({'user_id':user_id}, {"$set": {'latest_tweet_id': tweet_id}}, upsert=True)
 
     def get_latest_tweet_id_of_user(self, user_id):
+        if user_id in self.lastest_tweet_id_cache:
+            if self.lastest_tweet_id_cache[user_id] == -1:
+                return None
+            else:
+                return self.lastest_tweet_id_cache[user_id]
         row = self.scrape_meta_collection.find_one({'user_id':user_id})
         if row == None:
             self.lastest_tweet_id_cache[user_id] = -1
-            return None
-        tweet_id = row['latest_tweet_id']
-        self.lastest_tweet_id_cache[user_id] = int(tweet_id)
-        return tweet_id
+        else:
+            tweet_id = row['latest_tweet_id']
+            self.lastest_tweet_id_cache[user_id] = int(tweet_id)
+        return self.get_latest_tweet_id_of_user(user_id)
+
+    def flush(self):
+        for user_id, tweet_id in self.lastest_tweet_id_cache.items():
+            if tweet_id == -1:
+                continue
+            self.scrape_meta_collection.update_one({'user_id':user_id}, {"$set": {'latest_tweet_id': tweet_id}}, upsert=True)
 
     def close(self):
         self.client.close()
