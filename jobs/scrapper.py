@@ -11,7 +11,10 @@ import time
 import re
 from collections import defaultdict
 from itertools import groupby
-
+from bitarray import bitarray
+import binascii
+import gzip
+import cPickle as pickle
 import id_list
 
 stop_words = set([u'i',
@@ -143,6 +146,10 @@ stop_words = set([u'i',
  u'now',
  u'rt'])
 
+#user_idx = {x: i for i, x in enumerate(id_list.democrats + id_list.republicans)}
+user_idx = id_list.democrats + id_list.republicans
+
+
 class Logger(object):
     outs = [sys.stdout]
 
@@ -184,9 +191,9 @@ class Unigram_Classifier_DB:
         self.classifier_meta_term.create_index([('event', pymongo.ASCENDING), ('term', pymongo.ASCENDING), ('affiliation', pymongo.ASCENDING)])
 
     def clear(self):
-        self.classifier_tweets.delete_many({})
-        self.classifier_meta_event.delete_many({})
-        self.classifier_meta_term.delete_many({})
+        self.classifier_tweets.drop()
+        self.classifier_meta_event.drop()
+        self.classifier_meta_term.drop()
 
     def update_event_inc(self, event, user_id, affiliation):
         if event not in self.classifier_meta_event_cache:
@@ -198,13 +205,21 @@ class Unigram_Classifier_DB:
             self.get_term_meta(event, term)
         self.classifier_meta_term_cache[(event, term)][affiliation].add(user_id)
 
+    def format_user_ids(self, user_ids_set):
+        return binascii.hexlify(bitarray([True if user_idx[i] in user_ids_set else False for i in range(len(user_idx))]).tobytes())
+
+    def parse_user_ids(self, data):
+        x = bitarray()
+        x.frombytes(binascii.unhexlify(data))
+        return set([user_idx[i] for i,b in enumerate(x) if b])
+
     def get_event_meta(self, event):
         if event in self.classifier_meta_event_cache:
             return {affiliation:len(user_ids) for affiliation,user_ids in self.classifier_meta_event_cache[event].items()}
         #for c in self.classifier_meta_event.find({'event': event}):
         #    print c
         #    print c['affiliation']
-        data = {c['affiliation']:set(c['user_ids']) for c in self.classifier_meta_event.find({'event': event})}
+        data = {c['affiliation']:self.parse_user_ids(c['user_ids']) for c in self.classifier_meta_event.find({'event': event})}
         for affiliation in self.affiliations:
             if affiliation not in data:
                 data[affiliation] = set()
@@ -217,7 +232,7 @@ class Unigram_Classifier_DB:
     def get_term_meta(self, event, term):
         if (event, term) in self.classifier_meta_term_cache:
             return {affiliation:len(user_ids) for affiliation,user_ids in self.classifier_meta_term_cache[(event, term)].items()}
-        data = {c['affiliation']:set(c['user_ids']) for c in self.classifier_meta_term.find({'event': event, 'term': term})}
+        data = {c['affiliation']:self.parse_user_ids(c['user_ids']) for c in self.classifier_meta_term.find({'event': event, 'term': term})}
         for affiliation in self.affiliations:
             if affiliation not in data:
                 data[affiliation] = set()
@@ -234,9 +249,9 @@ class Unigram_Classifier_DB:
     def flush_tweets(self):
         to_add_all = []
         to_remove_all = set()
-        for c in list(self.classifier_tweets.find({'event': {'$in':list(self.classifier_tweets_cache.keys())}}, ['scores'])):
+        for c in list(self.classifier_tweets.find({'event': {'$in':list(self.classifier_tweets_cache.keys())}}, ['scores', 'event'])):
             self.classifier_tweets_cache[c['event']].append(c)
-        print 'flush tweets', len(self.classifier_tweets_cache)
+        print 'flush tweets #events', len(self.classifier_tweets_cache)
         for event, tweets in self.classifier_tweets_cache.items():
             to_remove = set([x['_id'] for x in tweets if '_id' in x])
             to_add = {}
@@ -256,17 +271,34 @@ class Unigram_Classifier_DB:
             self.classifier_tweets.insert_many(to_add_all)
         self.classifier_tweets_cache.clear()
 
-    def flush(self):
+    def flush(self, insert=False, use_pickle=False):
         self.flush_tweets()
+        if (use_pickle):
+            print 'flush using pickle'
+            with gzip.GzipFile('classifier_meta_event.pgz', 'w+') as f:
+                pickle.dump(self.classifier_meta_event_cache, f)
+            with gzip.GzipFile('classifier_meta_term.pgz', 'w+') as f:
+                pickle.dump(self.classifier_meta_term_cache, f)
+            self.classifier_meta_event_cache.clear()
+            self.classifier_meta_term_cache.clear()
+            return
+        print 'flush event_meta', len(self.classifier_meta_event_cache)
         for event, data in self.classifier_meta_event_cache.items():
             for affiliation, user_ids in data.items():
                 if user_ids:
-                    self.classifier_meta_event.update_one({'event':event, 'affiliation':affiliation}, {"$set": {'user_ids':  list(user_ids) }}, upsert=True)
+                    if insert:
+                        self.classifier_meta_event.insert({'event':event, 'affiliation':affiliation, 'user_ids':self.format_user_ids(user_ids)})
+                    else:
+                        self.classifier_meta_event.update_one({'event':event, 'affiliation':affiliation}, {"$set": {'user_ids':  self.format_user_ids(user_ids) }}, upsert=True)
+        print 'flush term_meta', len(self.classifier_meta_term_cache)
         for key, data in self.classifier_meta_term_cache.items():
             event, term = key
             for affiliation, user_ids in data.items():
                 if user_ids:
-                    self.classifier_meta_term.update_one({'event':event, 'term':term, 'affiliation':affiliation}, {"$set": {'user_ids':  list(user_ids) }}, upsert=True)
+                    if insert:
+                        self.classifier_meta_term.insert({'event':event, 'term':term, 'affiliation':affiliation, 'user_ids':self.format_user_ids(user_ids)})
+                    else:
+                        self.classifier_meta_term.update_one({'event':event, 'term':term, 'affiliation':affiliation}, {"$set": {'user_ids':  self.format_user_ids(user_ids) }}, upsert=True)
         self.classifier_meta_event_cache.clear()
         self.classifier_meta_term_cache.clear()
 
@@ -292,21 +324,24 @@ class Unigram_Classifier:
         return set(terms)
 
     def calculate_score(self, terms, event):
-        scores = defaultdict(float)
+        scores = defaultdict(list)
         event_counts = self.db.get_event_meta(event)
         #print event, event_counts
         if any([c < 100 for c in event_counts.values()]):
             return None
+        if len(terms) == 0:
+            return None
         for t in terms:
             term_counts = self.db.get_term_meta(event, t)
+            assert len(term_counts) == 2
             for affiliation, term_count in term_counts.items():
                 other_term_count = sum([c for a,c in term_counts.items() if a != affiliation])
                 other_event_count = sum([c for a,c in event_counts.items() if a != affiliation])
                 other_portion = (float(other_term_count)+1)/(other_event_count+1)
                 this_portion = (float(term_count)+1)/(event_counts[affiliation]+1)
                 new_score = this_portion * math.log(this_portion / other_portion)
-                scores[affiliation] = max(scores[affiliation], new_score)
-        return scores
+                scores[affiliation].append(new_score)
+        return {k:max(v) for k,v in scores.items()}
 
     def learn(self, tweet, affiliation):
         terms = self.get_terms(tweet)
