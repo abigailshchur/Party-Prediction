@@ -41,11 +41,31 @@
             <button type="submit" class="btn btn-info"> Go! </button>
         </form>
 
-        <div class="form-inline global-search">
+        {% load extra_math %}
+        <div align="center">
             <h4>Output</h4><br>
-            {% for line in output %}
-                {{line}}<br>
-            {% endfor %}
+            <table style="width:100%" border="1">
+                <tr>
+                  <th>tweet</th>
+                  <th>created_at</th>
+                  <th>user_id</th>
+                  <th>tweet_id</th>
+                  <th>republicans score</th>
+                  <th>democrats score</th>
+                  <th>impartiality score</th>
+                </tr>
+                {% for line in output %}
+                <tr>
+                  <td>{{line.tweet.text}}</td>
+                  <td>{{line.tweet.created_at}}</td>
+                  <td>{{line.tweet.user_id}}</td>
+                  <td>{{line.tweet.tweet_id}}</td>
+                  <td>{{line.scores.republicans|floatformat:3}}</td>
+                  <td>{{line.scores.democrats|floatformat:3}}</td>
+                  <td>{{line.scores.democrats|fadd:line.scores.republicans|divide:2|floatformat:3}}</td>
+                </tr>
+                {% endfor %}
+            </table>
 
             <div class="pagination">
                 <span class="step-links">
