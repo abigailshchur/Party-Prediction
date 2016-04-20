@@ -8,3 +8,7 @@ project_template/dem_tweets
 >>>>>>> abigailshchur/master
 
 jobs/test.py
+
+jobs/expoert_to_pickle.py
+
+*.pyc

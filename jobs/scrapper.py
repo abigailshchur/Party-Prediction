@@ -9,13 +9,16 @@ import sys
 import math
 import time
 import re
+import os
 from collections import defaultdict
+from urlparse import urlsplit
 from itertools import groupby
 from bitarray import bitarray
 import binascii
 import gzip
 import cPickle as pickle
 import id_list
+import json
 
 stop_words = set([u'i',
  u'me',
@@ -171,6 +174,7 @@ class Logger(object):
 
 class Unigram_Classifier_DB:
     def __init__(self, url, db_name, affiliations):
+        self.log = Logger("Unigram_Classifier_DB")
         self.client = MongoClient(url)
         self.db = self.client[db_name]
         self.classifier_tweets = self.db['unigram_classifier_tweets']
@@ -251,7 +255,7 @@ class Unigram_Classifier_DB:
         to_remove_all = set()
         for c in list(self.classifier_tweets.find({'event': {'$in':list(self.classifier_tweets_cache.keys())}}, ['scores', 'event'])):
             self.classifier_tweets_cache[c['event']].append(c)
-        print 'flush tweets #events', len(self.classifier_tweets_cache)
+        self.log.d('flush tweets #events {}'.format(len(self.classifier_tweets_cache)))
         for event, tweets in self.classifier_tweets_cache.items():
             to_remove = set([x['_id'] for x in tweets if '_id' in x])
             to_add = {}
@@ -264,17 +268,17 @@ class Unigram_Classifier_DB:
             to_add_all += list(to_add.values())
             to_remove_all.update(to_remove)
         if to_remove_all:
-            print 'remove tweets', len(to_remove_all)
+            self.log.d('remove tweets {}'.format(len(to_remove_all)))
             self.classifier_tweets.remove({'_id':{'$in':list(to_remove_all)}})
         if to_add_all:
-            print 'add tweets', len(to_add_all)
+            self.log.d('add tweets {}'.format(len(to_add_all)))
             self.classifier_tweets.insert_many(to_add_all)
         self.classifier_tweets_cache.clear()
 
     def flush(self, insert=False, use_pickle=False):
         self.flush_tweets()
         if (use_pickle):
-            print 'flush using pickle'
+            self.log.d('flush using pickle')
             with gzip.GzipFile('classifier_meta_event.pgz', 'w+') as f:
                 pickle.dump(self.classifier_meta_event_cache, f)
             with gzip.GzipFile('classifier_meta_term.pgz', 'w+') as f:
@@ -282,7 +286,7 @@ class Unigram_Classifier_DB:
             self.classifier_meta_event_cache.clear()
             self.classifier_meta_term_cache.clear()
             return
-        print 'flush event_meta', len(self.classifier_meta_event_cache)
+        self.log.d('flush event_meta {}'.format(len(self.classifier_meta_event_cache)))
         for event, data in self.classifier_meta_event_cache.items():
             for affiliation, user_ids in data.items():
                 if user_ids:
@@ -290,7 +294,7 @@ class Unigram_Classifier_DB:
                         self.classifier_meta_event.insert({'event':event, 'affiliation':affiliation, 'user_ids':self.format_user_ids(user_ids)})
                     else:
                         self.classifier_meta_event.update_one({'event':event, 'affiliation':affiliation}, {"$set": {'user_ids':  self.format_user_ids(user_ids) }}, upsert=True)
-        print 'flush term_meta', len(self.classifier_meta_term_cache)
+        self.log.d('flush term_meta {}'.format(len(self.classifier_meta_term_cache)))
         for key, data in self.classifier_meta_term_cache.items():
             event, term = key
             for affiliation, user_ids in data.items():
@@ -326,8 +330,7 @@ class Unigram_Classifier:
     def calculate_score(self, terms, event):
         scores = defaultdict(list)
         event_counts = self.db.get_event_meta(event)
-        #print event, event_counts
-        if any([c < 100 for c in event_counts.values()]):
+        if any([c < 50 for c in event_counts.values()]):
             return None
         if len(terms) == 0:
             return None
@@ -364,7 +367,7 @@ class Scrapper_META_DB:
         self.lastest_tweet_id_cache = {}
 
     def clear(self):
-        self.scrape_meta_collection.delete_many({})
+        self.scrape_meta_collection.drop()
 
     def update_latest_tweet_id_of_user(self, user_id, tweet_id):
         if user_id not in self.lastest_tweet_id_cache:
@@ -397,7 +400,7 @@ class Scrapper_META_DB:
 
 class Scrapper:
     def __init__(self, API_pool, scrapper_meta, callback):
-        self.log = Logger(name)
+        self.log = Logger("Scrapper")
         self.API_pool = API_pool
         self.scrapper_meta = scrapper_meta
         self.fetch_complete = set()
@@ -415,11 +418,11 @@ class Scrapper:
         try:
             tweets = self.API_pool.fetch_tweets(user_id, latest_tweet_id)
         except tweepy.TweepError as e:
-            self.log.d('<{}> TweepError: {}'.format(target['id'], str(e)))
+            self.log.d('<{}> TweepError: {}'.format(target['user_id'], str(e)))
             self.set_complete(user_id)
             return
         except:
-            self.log.d('<{}> Unexpected error: {}'.format(target['id'], sys.exc_info()[0]))
+            self.log.d('<{}> Unexpected error: {}'.format(target['user_id'], sys.exc_info()[0]))
             raise
         if len(tweets) == 0:
             self.set_complete(user_id)
@@ -431,8 +434,8 @@ class Scrapper:
     def run(self, targets):
         i = 0
         total = len(targets)
-        while len(targets) != len(fetch_complete):
-            target = target_ids[i%total]
+        while total != len(self.fetch_complete):
+            target = targets[i%total]
             user_id = target['user_id']
             i += 1
             if self.has_complete(user_id):
@@ -465,7 +468,7 @@ class API_pool():
 
     def get_idle_api(self):
         now = time.time()
-        for i,st in enumerate(self.APIs):
+        for i,st in enumerate(self.status):
             if st == -1:
                 return self.APIs[i]
             elif now >= st:
@@ -483,13 +486,16 @@ class API_pool():
     def fetch_tweets(self, user_id, latest):
         api = self.get_idle_api()
         if api == None:
-            raise AllBusyError()
+            raise API_pool.AllBusyError()
         try:
             if (latest == None) :
-                new_tweets = self.api.user_timeline(user_id = user_id, count = 200)
+                new_tweets = api.user_timeline(user_id = user_id, count = 200)
             else:
-                new_tweets = self.api.user_timeline(user_id = user_id, count = 200, since_id = latest)
+                new_tweets = api.user_timeline(user_id = user_id, count = 200, since_id = latest)
             new_tweets = [self.parse_tweet(t) for t in new_tweets]
+            for tweet in new_tweets:
+                tweet['user_id'] = user_id
+            self.log.d("get tweets " + str(len(new_tweets)))
             return new_tweets
         except tweepy.RateLimitError:
             self.log.d('RateLimitError')
@@ -512,16 +518,18 @@ def build_targets(democrats, republicans):
 if __name__ == '__main__':
     log = Logger('main')
     targets = build_targets(id_list.democrats, id_list.republicans)
-    url = None
-    db_name = None
-    authentications = None
+    url = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/cs4300')
+    parsed_url = urlsplit(url)
+    db_name = parsed_url.path[1:]
+    authentications = json.loads(os.getenv('TWEET_AUTHENTICATIONS', '[]'))
     unigram_classifier_db = Unigram_Classifier_DB(url, db_name, ['democrats', 'republicans'])
     scrapper_meta_db = Scrapper_META_DB(url, db_name)
     classifier = Unigram_Classifier(unigram_classifier_db)
     api_pool = API_pool(authentications)
     scrapper = Scrapper(api_pool, scrapper_meta_db, lambda tweet, target: classifier.learn(tweet, target['affiliation']))
     scrapper.run(targets)
-    unigram_classifier_db.clear_redundancy()
+    unigram_classifier_db.flush()
     unigram_classifier_db.close()
+    scrapper_meta_db.flush()
     scrapper_meta_db.close()
     log.d('main thread exits.')
