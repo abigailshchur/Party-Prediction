@@ -85,9 +85,11 @@
 	    </div>
 	  </div>
 	  {% else %}
-	  <div class="row" style="text-align: center">
-	    No results found.
-	  </div>
+	    {% if search %}
+	      <div class="row" style="text-align: center">
+		No results found.
+	      </div>
+	    {% endif %}
 	  {% endif %}
       </div>
     </body>
