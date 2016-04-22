@@ -37,6 +37,7 @@ def index(request):
     dems = ""
     reps = ""
     neutral = ""
+    search = ""
     if request.GET.get('search'):
         search = request.GET.get('search')
         dems = classifier_tweets.find({'event': search}).sort("scores.democrats", -1)
