@@ -42,10 +42,12 @@
 	      <button type="submit" class="btn btn-info"> Go! </button>
 	  </form>
 
-	  <div class="row" style="text-align: center; margin-bottom: 1em">
-	    <span class="h1">#{{search}}</span>
-	  </div>
 	  {% load extra_math %}
+	  {% if search %}
+	    <div class="row" style="text-align: center; margin-bottom: 1em">
+	      <span class="h1">#{{search}}</span>
+	    </div>
+	  {% endif %}
 	  {% if dems %}
 	  <div class="row">
 	    <div class="col-md-4 dems"><span class="h3">Most Democratic</span>
