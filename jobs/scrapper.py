@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import time
 import datetime
 import tweepy
 import csv
@@ -11,12 +12,18 @@ import time
 import re
 import os
 from collections import defaultdict
-from urlparse import urlsplit
+try:
+    from urlparse import urlsplit
+except ImportError:
+    from urllib.parse import urlsplit
 from itertools import groupby
 from bitarray import bitarray
 import binascii
 import gzip
-import cPickle as pickle
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 import id_list
 import json
 
@@ -443,7 +450,7 @@ class Scrapper:
             self.log.d('run user_id: {}'.format(user_id))
             try:
                 self.scrape(target)
-            except API_pool.AllBusyError:
+            except API_pool.AllBusyrror:
                 self.log.d('AllBusyError')
                 break
         self.log.d('end run')
@@ -485,8 +492,13 @@ class API_pool():
 
     def fetch_tweets(self, user_id, latest):
         api = self.get_idle_api()
-        if api == None:
-            raise API_pool.AllBusyError()
+        while api == None:
+            print("Waiting")
+            for x in range(15):
+                time.sleep(62)
+                print(x+1)
+            api = self.get_idle_api()
+            #raise API_pool.AllBusyError()
         try:
             if (latest == None) :
                 new_tweets = api.user_timeline(user_id = user_id, count = 200)
@@ -521,7 +533,8 @@ if __name__ == '__main__':
     url = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/cs4300')
     parsed_url = urlsplit(url)
     db_name = parsed_url.path[1:]
-    authentications = json.loads(os.getenv('TWEET_AUTHENTICATIONS', '[]'))
+    authentications = [{"consumer_key": "eNfjPJT12a1aiFGaVSNnn6nTg", "consumer_secret": "wJk3RhuhUo5MFNnnLaJQIM2Q93gFeMMfWGUzoYd6z49z8Kis2w", "access_key": "717950588076601344-yDbU6iN96hMagodDyv2iqTxuiNQ7VkS", "access_secret": "OycOAMytzLXlik4qO32iLWxPoPaqNmoXlDrW6QfhhX7Vd"}]
+    #json.loads(os.getenv('TWEET_AUTHENTICATIONS', '[]'))
     unigram_classifier_db = Unigram_Classifier_DB(url, db_name, ['democrats', 'republicans'])
     scrapper_meta_db = Scrapper_META_DB(url, db_name)
     classifier = Unigram_Classifier(unigram_classifier_db)
