@@ -5,84 +5,94 @@
     </head>
 
     <body>
-        <!-- TODO: Please change lines 10 and 11 according to your actual project name and student names-->
-        <div class="topcorner">
-            <p>Party Prediction (A CS 4300 Project)</p>
-            <p>Abigail Shchur(aks236)</p>
-            <p>Mukund Sudarshan(ms2666)</p>
-            <p>Jiancheng Zhu(jz448)</p>
-            <p>Andrew Wang(azw7)</p>
-        </div>
+      <div class="container-fluid">
+	  <div class="topcorner">
+	      <p>Party Prediction (A CS 4300 Project)</p>
+	      <p>Abigail Shchur(aks236)</p>
+	      <p>Mukund Sudarshan(ms2666)</p>
+	      <p>Jiancheng Zhu(jz448)</p>
+	      <p>Andrew Wang(azw7)</p>
+	  </div>
 
-        <form class="form-inline global-search" method='GET'>
-            <h1 style="font-size: 55px; font-family:Futura; color: #4285F4">
-                P
-                <font color=#EA4335>A</font>
-                <font color=#FBBC05>R</font>
-                <font color=#EA4335>T</font>
-                <font color=#FBBC05>Y</font>
-                P
-                <font color=#34A853>R</font>
-                <font color=#EA4335>E</font>
-                <font color=#34A853>D</font>
-                <font color=#EA4335>I</font>
-                <font color=#34A853>C</font>
-                <font color=#EA4335>T</font>
-                <font color=#34A853>I</font>
-                <font color=#EA4335>O</font>
-                <font color=#34A853>N</font>
-            </h1>
+	  <form class="form-inline global-search" method='GET'>
+	      <h1 style="font-size: 55px; font-family:Futura; color: #4285F4">
+		  P
+		  <font color=#EA4335>A</font>
+		  <font color=#FBBC05>R</font>
+		  <font color=#EA4335>T</font>
+		  <font color=#FBBC05>Y</font>
+		  <font color=#000000>_</font>
+		  P
+		  <font color=#34A853>R</font>
+		  <font color=#EA4335>E</font>
+		  <font color=#34A853>D</font>
+		  <font color=#EA4335>I</font>
+		  <font color=#34A853>C</font>
+		  <font color=#EA4335>T</font>
+		  <font color=#34A853>I</font>
+		  <font color=#EA4335>O</font>
+		  <font color=#34A853>N</font>
+	      </h1>
 
-            <br><br>
+	      <br><br>
 
-            <div class="form-group">
-                <input id="input" type="text" name="search" class="form-control" placeholder="Your Input">
-            </div>
-            <button type="submit" class="btn btn-info"> Go! </button>
-        </form>
+	      <div class="form-group">
+		  <input id="input" type="text" name="search" class="form-control" placeholder="Search a hashtag">
+	      </div>
+	      <button type="submit" class="btn btn-info"> Go! </button>
+	  </form>
 
-        {% load extra_math %}
-        <div align="center">
-            <h4>Output</h4><br>
-            <table style="width:100%" border="1">
-                <tr>
-                  <th>tweet</th>
-                  <th>created_at</th>
-                  <th>user_id</th>
-                  <th>tweet_id</th>
-                  <th>republicans score</th>
-                  <th>democrats score</th>
-                  <th>impartiality score</th>
-                </tr>
-                {% for line in output %}
-                <tr>
-                  <td>{{line.tweet.text}}</td>
-                  <td>{{line.tweet.created_at}}</td>
-                  <td>{{line.tweet.user_id}}</td>
-                  <td>{{line.tweet.tweet_id}}</td>
-                  <td>{{line.scores.republicans|floatformat:3}}</td>
-                  <td>{{line.scores.democrats|floatformat:3}}</td>
-                  <td>{{line.scores.democrats|fadd:line.scores.republicans|divide:2|floatformat:3}}</td>
-                </tr>
-                {% endfor %}
-            </table>
-
-            <div class="pagination">
-                <span class="step-links">
-                    {% if output.has_previous %}
-                    <a href= "{{magic_url}}&page={{ output.previous_page_number }}">previous</a>
-                    {% endif %}
-
-                    <!-- Showing the page numbers in Html Page -->
-                    <span class="current">
-                    Page _{{ output.number }}_ of _{{ output.paginator.num_pages }}_
-                    </span>
-
-                    {% if output.has_next %}
-                    <a href= "{{magic_url}}&page={{ output.next_page_number }}">next</a>
-                    {% endif %}
-                </span>
-            </div>
-        </div>
+	  {% load extra_math %}
+	  {% if search %}
+	    <div class="row" style="text-align: center; margin-bottom: 1em">
+	      <span class="h1">#{{search}}</span>
+	    </div>
+	  {% endif %}
+	  {% if dems %}
+	  <div class="row">
+	    <div class="col-md-4 dems"><span class="h3">Most Democratic</span>
+	    </div>
+	    <div class="col-md-4 neutral"><span class="h3">Most Neutral</span>
+	    </div>
+	    <div class="col-md-4 reps"><span class="h3">Most Republican</span>
+	    </div>
+	  </div>
+	  <div class="row">
+	    <div class="col-md-4 demresults">
+	      {% for line in dems %}
+	      <div class="row tweet">
+		{{line.tweet.text}}<br>
+		<div class="tweetmeta"><div class="col-md-6" style="padding:0">{{line.tweet.created_at}}</div><div class="col-md-6" style="text-align: right; padding:0">Score: {{line.scores.democrats|floatformat:3}}</div></div>
+	      </div>
+	      {% endfor %}
+	    </div>
+	    <div class="col-md-4 neutralresults">
+	      {% for line in neutral %}
+	      <div class="row tweet ">
+		{{line.tweet.text}}<br>
+		<div class="tweetmeta"><div class="col-md-6" style="padding:0">{{line.tweet.created_at}}</div>
+		  <div class="col-md-3" style="text-align: right; padding:0"><span style="color: #7788AA">Dem:</span> {{line.scores.democrats|floatformat:3}}</div>
+		  <div class="col-md-3" style="text-align: right; padding:0"><span style="color: #D36969">Rep:</span> {{line.scores.republicans|floatformat:3}}</div>
+		</div>
+	      </div>
+	      {% endfor %}
+	    </div>
+	    <div class="col-md-4 represults">
+	      {% for line in reps %}
+	      <div class="row tweet ">
+		{{line.tweet.text}}<br>
+		<div class="tweetmeta"><div class="col-md-6" style="padding:0">{{line.tweet.created_at}}</div><div class="col-md-6" style="text-align: right; padding:0">Score: {{line.scores.republicans|floatformat:3}}</div></div>
+	      </div>
+	      {% endfor %}
+	    </div>
+	  </div>
+	  {% else %}
+	    {% if search %}
+	      <div class="row" style="text-align: center">
+		No results found.
+	      </div>
+	    {% endif %}
+	  {% endif %}
+      </div>
     </body>
 </html>

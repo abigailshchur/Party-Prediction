@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import time
 import datetime
 import tweepy
 import csv
@@ -11,13 +12,19 @@ import time
 import re
 import os
 from collections import defaultdict
-from urlparse import urlsplit
+try:
+    from urlparse import urlsplit
+except ImportError:
+    from urllib.parse import urlsplit
 from itertools import groupby
 from bitarray import bitarray
 from bson.binary import Binary
 import binascii
 import gzip
-import cPickle as pickle
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 import id_list
 import json
 import io
@@ -476,7 +483,8 @@ class API_pool():
     class AllBusyError(Exception):
         pass
 
-    def __init__(self, authentications):
+    def __init__(self, authentications, wait=False):
+        self.wait = wait
         self.log = Logger("API_pool");
         self.APIs = [];
         self.status = []; #-1 is idle, time is busy
@@ -510,6 +518,10 @@ class API_pool():
 
     def fetch_tweets(self, user_id, latest):
         api = self.get_idle_api()
+        while api == None and self.wait: #switch wait use when instantiate API_pool
+            self.log("waiting 1min")
+            time.sleep(60) #don't need to wait 15min because some authentication may recover earlier
+            api = self.get_idle_api()
         if api == None:
             raise API_pool.AllBusyError()
         try:
@@ -547,6 +559,9 @@ if __name__ == '__main__':
     parsed_url = urlsplit(url)
     db_name = parsed_url.path[1:]
     authentications = json.loads(base64.b64decode(os.getenv('TWEET_AUTHENTICATIONS', base64.b64encode('[]'))))
+    #import base64;base64.b64encode(json.dumps(authutications))
+    #export TWEET_AUTHENTICATIONS=ABOVE_RESULT_WITHOUT_QUOT
+    #authentications = [{"consumer_key": "eNfjPJT12a1aiFGaVSNnn6nTg", "consumer_secret": "wJk3RhuhUo5MFNnnLaJQIM2Q93gFeMMfWGUzoYd6z49z8Kis2w", "access_key": "717950588076601344-yDbU6iN96hMagodDyv2iqTxuiNQ7VkS", "access_secret": "OycOAMytzLXlik4qO32iLWxPoPaqNmoXlDrW6QfhhX7Vd"}]
     unigram_classifier_db = Unigram_Classifier_DB(url, db_name, ['democrats', 'republicans'])
     scrapper_meta_db = Scrapper_META_DB(url, db_name)
     classifier = Unigram_Classifier(unigram_classifier_db)
