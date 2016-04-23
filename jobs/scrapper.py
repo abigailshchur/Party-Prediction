@@ -14,11 +14,14 @@ from collections import defaultdict
 from urlparse import urlsplit
 from itertools import groupby
 from bitarray import bitarray
+from bson.binary import Binary
 import binascii
 import gzip
 import cPickle as pickle
 import id_list
 import json
+import io
+import base64
 
 stop_words = set([u'i',
  u'me',
@@ -183,6 +186,8 @@ class Unigram_Classifier_DB:
         self.classifier_tweets_cache = defaultdict(list)
         self.classifier_meta_event_cache = {}
         self.classifier_meta_term_cache = {}
+        self.classifier_meta_event_cache_count = {}
+        self.classifier_meta_term_cache_count = {}
         self.affiliations = affiliations
         self.setup_index()
 
@@ -202,49 +207,67 @@ class Unigram_Classifier_DB:
     def update_event_inc(self, event, user_id, affiliation):
         if event not in self.classifier_meta_event_cache:
             self.get_event_meta(event)
-        self.classifier_meta_event_cache[event][affiliation].add(user_id)
+        if user_id not in self.classifier_meta_event_cache[event][affiliation]:
+            self.classifier_meta_event_cache[event][affiliation].add(user_id)
+            self.classifier_meta_event_cache_count[event][affiliation] += 1
 
     def update_term_inc(self, event, term, user_id, affiliation):
-        if (event, term) not in self.classifier_meta_term_cache:
+        if event not in self.classifier_meta_term_cache:
             self.get_term_meta(event, term)
-        self.classifier_meta_term_cache[(event, term)][affiliation].add(user_id)
+        if (user_id, term) not in self.classifier_meta_term_cache[event][affiliation]:
+            self.classifier_meta_term_cache[event][affiliation].add((user_id, term))
+            if (event, term) not in self.classifier_meta_term_cache_count:
+                self.classifier_meta_term_cache_count[(event, term)] = {affiliation:0 for affiliation in self.affiliations}
+            self.classifier_meta_term_cache_count[(event, term)][affiliation] += 1
 
-    def format_user_ids(self, user_ids_set):
-        return binascii.hexlify(bitarray([True if user_idx[i] in user_ids_set else False for i in range(len(user_idx))]).tobytes())
+    def binary_to_obj(self, binary):
+        x = io.BytesIO(binary)
+        f = gzip.GzipFile(mode='r', fileobj=x)
+        obj = pickle.load(f)
+        f.close()
+        x.close()
+        return obj
 
-    def parse_user_ids(self, data):
-        x = bitarray()
-        x.frombytes(binascii.unhexlify(data))
-        return set([user_idx[i] for i,b in enumerate(x) if b])
+    def obj_to_binary(self, obj):
+        x = io.BytesIO()
+        f = gzip.GzipFile(mode='wb', fileobj=x)
+        pickle.dump(obj, f)
+        f.close()
+        binary = Binary(x.getvalue())
+        x.close()
+        return binary
 
     def get_event_meta(self, event):
+        #event_cache {event: {affiliation: [user_ids]} } #event_cache_count {event: {affiliation: int}}
         if event in self.classifier_meta_event_cache:
-            return {affiliation:len(user_ids) for affiliation,user_ids in self.classifier_meta_event_cache[event].items()}
-        #for c in self.classifier_meta_event.find({'event': event}):
-        #    print c
-        #    print c['affiliation']
-        data = {c['affiliation']:self.parse_user_ids(c['user_ids']) for c in self.classifier_meta_event.find({'event': event})}
+            return self.classifier_meta_event_cache_count[event]
+        data = {c['affiliation']:set(c['user_ids']) for c in self.classifier_meta_event.find({'event': event})}
         for affiliation in self.affiliations:
             if affiliation not in data:
                 data[affiliation] = set()
         self.classifier_meta_event_cache[event] = data
+        self.classifier_meta_event_cache_count[event] = {affiliation:len(user_ids) for affiliation, user_ids in data.items()}
         return self.get_event_meta(event)
-        #pipline = [{'$match'  : {'event': event}},
-        #           {'$project': {'affiliation': 1, 'count': { '$size': '$user_ids' }}}]
-        #return {c['affiliation']:c['count'] for c in self.classifier_meta_event.aggregate(pipline)}
 
     def get_term_meta(self, event, term):
-        if (event, term) in self.classifier_meta_term_cache:
-            return {affiliation:len(user_ids) for affiliation,user_ids in self.classifier_meta_term_cache[(event, term)].items()}
-        data = {c['affiliation']:self.parse_user_ids(c['user_ids']) for c in self.classifier_meta_term.find({'event': event, 'term': term})}
+        #event_cache {event: {affiliation: [user_id_term_pairs]} } #event_cache_count {(event,term): {affiliation: int}}
+        if event in self.classifier_meta_term_cache:
+            if (event,term) in self.classifier_meta_term_cache_count:
+                return self.classifier_meta_term_cache_count[(event,term)]
+            else:
+                return {affiliation:0 for affiliation in self.affiliations}
+        data = {c['affiliation']:self.binary_to_obj(c['user_id_term_pairs']) for c in self.classifier_meta_term.find({'event': event})}
         for affiliation in self.affiliations:
             if affiliation not in data:
                 data[affiliation] = set()
-        self.classifier_meta_term_cache[(event, term)] = data
-        return self.get_event_meta(event)
-        #pipline = [{'$match'  : {'event': event, 'term': term}},
-        #           {'$project': {'affiliation': 1, 'count': { '$size': '$user_ids' }}}]
-        #return {c['affiliation']:c['count'] for c in self.classifier_meta_term.aggregate(pipline)}
+        self.classifier_meta_term_cache[event] = data
+        #setup classifier_meta_term_cache_count
+        for affiliation, user_id_term_pairs in data.items():
+            for user_id, term in user_id_term_pairs:
+                if (event, term) not in self.classifier_meta_term_cache_count:
+                    self.classifier_meta_term_cache_count[(event, term)] = {affiliation:0 for affiliation in self.affiliations}
+                self.classifier_meta_term_cache_count[(event, term)][affiliation] += 1
+        return self.get_term_meta(event, term)
 
     def store_tweet(self, tweet, event, scores):
         assert len(scores) == len(self.affiliations)
@@ -291,18 +314,17 @@ class Unigram_Classifier_DB:
             for affiliation, user_ids in data.items():
                 if user_ids:
                     if insert:
-                        self.classifier_meta_event.insert({'event':event, 'affiliation':affiliation, 'user_ids':self.format_user_ids(user_ids)})
+                        self.classifier_meta_event.insert({'event':event, 'affiliation':affiliation, 'user_ids':list(user_ids)})
                     else:
-                        self.classifier_meta_event.update_one({'event':event, 'affiliation':affiliation}, {"$set": {'user_ids':  self.format_user_ids(user_ids) }}, upsert=True)
+                        self.classifier_meta_event.update_one({'event':event, 'affiliation':affiliation}, {"$set": {'user_ids':  list(user_ids) }}, upsert=True)
         self.log.d('flush term_meta {}'.format(len(self.classifier_meta_term_cache)))
-        for key, data in self.classifier_meta_term_cache.items():
-            event, term = key
-            for affiliation, user_ids in data.items():
-                if user_ids:
+        for event, data in self.classifier_meta_term_cache.items():
+            for affiliation, user_id_term_pairs in data.items():
+                if user_id_term_pairs:
                     if insert:
-                        self.classifier_meta_term.insert({'event':event, 'term':term, 'affiliation':affiliation, 'user_ids':self.format_user_ids(user_ids)})
+                        self.classifier_meta_term.insert({'event':event, 'affiliation':affiliation, 'user_id_term_pairs':self.obj_to_binary(user_id_term_pairs)})
                     else:
-                        self.classifier_meta_term.update_one({'event':event, 'term':term, 'affiliation':affiliation}, {"$set": {'user_ids':  self.format_user_ids(user_ids) }}, upsert=True)
+                        self.classifier_meta_term.update_one({'event':event, 'affiliation':affiliation}, {"$set": {'user_id_term_pairs':  self.obj_to_binary(user_id_term_pairs) }}, upsert=True)
         self.classifier_meta_event_cache.clear()
         self.classifier_meta_term_cache.clear()
 
@@ -336,6 +358,8 @@ class Unigram_Classifier:
             return None
         for t in terms:
             term_counts = self.db.get_term_meta(event, t)
+            if len(term_counts) != 2:
+                print term_counts
             assert len(term_counts) == 2
             for affiliation, term_count in term_counts.items():
                 other_term_count = sum([c for a,c in term_counts.items() if a != affiliation])
@@ -421,9 +445,9 @@ class Scrapper:
             self.log.d('<{}> TweepError: {}'.format(target['user_id'], str(e)))
             self.set_complete(user_id)
             return
-        except:
+        except Exception as e:
             self.log.d('<{}> Unexpected error: {}'.format(target['user_id'], sys.exc_info()[0]))
-            raise
+            raise e
         if len(tweets) == 0:
             self.set_complete(user_id)
             return
@@ -440,7 +464,7 @@ class Scrapper:
             i += 1
             if self.has_complete(user_id):
                 continue
-            self.log.d('run user_id: {}'.format(user_id))
+            self.log.d('run {} user_id: {}'.format(i, user_id))
             try:
                 self.scrape(target)
             except API_pool.AllBusyError:
@@ -474,6 +498,7 @@ class API_pool():
             elif now >= st:
                 self.status[i] = -1
                 return self.APIs[i]
+        self.log("use authentication {}".format(i))
         return None
 
     def set_busy(self, api):
@@ -495,7 +520,7 @@ class API_pool():
             new_tweets = [self.parse_tweet(t) for t in new_tweets]
             for tweet in new_tweets:
                 tweet['user_id'] = user_id
-            self.log.d("get tweets " + str(len(new_tweets)))
+            self.log.d("get {}'s tweets {} {}-{}".format(user_id, len(new_tweets), new_tweets[0]['created_at'], new_tweets[-1]['created_at']))
             return new_tweets
         except tweepy.RateLimitError:
             self.log.d('RateLimitError')
@@ -521,7 +546,7 @@ if __name__ == '__main__':
     url = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/cs4300')
     parsed_url = urlsplit(url)
     db_name = parsed_url.path[1:]
-    authentications = json.loads(os.getenv('TWEET_AUTHENTICATIONS', '[]'))
+    authentications = json.loads(base64.b64decode(os.getenv('TWEET_AUTHENTICATIONS', base64.b64encode('[]'))))
     unigram_classifier_db = Unigram_Classifier_DB(url, db_name, ['democrats', 'republicans'])
     scrapper_meta_db = Scrapper_META_DB(url, db_name)
     classifier = Unigram_Classifier(unigram_classifier_db)
