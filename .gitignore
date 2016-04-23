@@ -12,3 +12,5 @@ jobs/test.py
 jobs/expoert_to_pickle.py
 
 *.pyc
+
+jobs/find_frequent_terms.py
