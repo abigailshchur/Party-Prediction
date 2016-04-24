@@ -58,6 +58,7 @@ class Logger(object):
 class Unigram_Classifier_DB:
     def __init__(self, url, db_name, affiliations):
         self.log = Logger("Unigram_Classifier_DB")
+        self.tweet_filter_range = 50
         self.client = MongoClient(url)
         self.db = self.client[db_name]
         self.classifier_tweets = self.db['unigram_classifier_tweets']
@@ -149,9 +150,9 @@ class Unigram_Classifier_DB:
                 self.classifier_meta_term_cache_count[(event, term)][affiliation] += 1
         return self.get_term_meta(event, term)
 
-    def store_tweet(self, tweet, event, scores):
+    def store_tweet(self, tweet, event, scores, score_detail):
         assert len(scores) == len(self.affiliations)
-        self.classifier_tweets_cache[event].append({'tweet': tweet, 'event': event, 'scores': scores})
+        self.classifier_tweets_cache[event].append({'tweet': tweet, 'event': event, 'scores': scores, 'score_detail': score_detail})
 
     def flush_tweets(self):
         to_add_all = []
@@ -164,8 +165,8 @@ class Unigram_Classifier_DB:
             to_add = {}
             for affiliation in self.affiliations:
                 tweets.sort(key = lambda x: x['scores'][affiliation])
-                to_remove.intersection_update([x['_id'] for x in tweets[100:-100] if '_id' in x])
-                for x in tweets[0:100] + tweets[-100:]:
+                to_remove.intersection_update([x['_id'] for x in tweets[self.tweet_filter_range:-self.tweet_filter_range] if '_id' in x])
+                for x in tweets[0:self.tweet_filter_range] + tweets[-self.tweet_filter_range:]:
                     if '_id' not in x:
                         to_add[(x['event'], x['tweet']['tweet_id'])] = x
             to_add_all += list(to_add.values())
@@ -238,8 +239,6 @@ class Unigram_Classifier:
             return None
         for t in terms:
             term_counts = self.db.get_term_meta(event, t)
-            if len(term_counts) != 2:
-                print term_counts
             assert len(term_counts) == 2
             for affiliation, term_count in term_counts.items():
                 other_term_count = sum([c for a,c in term_counts.items() if a != affiliation])
@@ -248,7 +247,7 @@ class Unigram_Classifier:
                 this_portion = (float(term_count)+1)/(event_counts[affiliation]+1)
                 new_score = this_portion * math.log(this_portion / other_portion)
                 scores[affiliation].append(new_score)
-        return {k:max(v) for k,v in scores.items()}
+        return {k:max(v) for k,v in scores.items()}, {k:zip(terms, v) for k,v in scores.items()}
 
     def learn(self, tweet, affiliation):
         terms = self.get_terms(tweet)
@@ -259,9 +258,10 @@ class Unigram_Classifier:
             for term in terms:
                 self.db.update_term_inc(event, term, user_id, affiliation)
             scores = self.calculate_score(terms, event)
-            if scores == None:
+            if scores is None:
                 continue
-            self.db.store_tweet(tweet, event, scores)
+            scores, score_detail = scores
+            self.db.store_tweet(tweet, event, scores, score_detail)
 
 class Scrapper_META_DB:
     def __init__(self, url, db_name):
@@ -286,7 +286,7 @@ class Scrapper_META_DB:
             else:
                 return self.lastest_tweet_id_cache[user_id]
         row = self.scrape_meta_collection.find_one({'user_id':user_id})
-        if row == None:
+        if row is None:
             self.lastest_tweet_id_cache[user_id] = -1
         else:
             tweet_id = row['latest_tweet_id']
@@ -325,9 +325,9 @@ class Scrapper:
             self.log.d('<{}> TweepError: {}'.format(target['user_id'], str(e)))
             self.set_complete(user_id)
             return
-        except Exception as e:
+        except:
             self.log.d('<{}> Unexpected error: {}'.format(target['user_id'], sys.exc_info()[0]))
-            raise e
+            raise
         if len(tweets) == 0:
             self.set_complete(user_id)
             return
@@ -361,6 +361,8 @@ class API_pool():
         self.log = Logger("API_pool");
         self.APIs = [];
         self.status = []; #-1 is idle, time is busy
+        if len(authentications) == 0:
+            raise Exception('API_pool: no authentications')
         for authutication in authentications:
             consumer_key = authutication["consumer_key"]
             consumer_secret = authutication["consumer_secret"]
@@ -370,17 +372,22 @@ class API_pool():
             auth.set_access_token(access_key, access_secret)
             self.APIs.append(tweepy.API(auth))
             self.status.append(-1)
+        self.log.d('#authentications: {}'.format(len(authentications)))
 
     def get_idle_api(self):
         now = time.time()
         for i,st in enumerate(self.status):
-            if st == -1:
-                return self.APIs[i]
-            elif now >= st:
+            if now >= st:
+                self.log.d("use authentication {}".format(i))
                 self.status[i] = -1
                 return self.APIs[i]
-        self.log("use authentication {}".format(i))
-        return None
+        if self.wait:
+            self.log.d("waiting 1min")
+            time.sleep(60) #don't need to wait 15min because some authentication may recover earlier
+            return self.get_idle_api()
+        else:
+            raise API_pool.AllBusyError()
+            return None
 
     def set_busy(self, api):
         i = self.APIs.index(api)
@@ -389,23 +396,41 @@ class API_pool():
     def parse_tweet(self, tweet):
         return {'tweet_id': tweet.id, 'created_at': tweet.created_at, 'text': tweet.text}
 
+    def parse_tweets(self, tweets, user_id):
+        tweets = [self.parse_tweet(t) for t in tweets]
+        for tweet in tweets:
+            tweet['user_id'] = user_id
+        return tweets
+
     def fetch_tweets(self, user_id, latest):
-        api = self.get_idle_api()
-        while api == None and self.wait: #set wait when instantiate API_pool
-            self.log("waiting 1min")
-            time.sleep(60) #don't need to wait 15min because some authentication may recover earlier
-            api = self.get_idle_api()
-        if api == None:
-            raise API_pool.AllBusyError()
+        api = None
         try:
-            if (latest == None) :
+            if latest is None :
+                api = self.get_idle_api()
                 new_tweets = api.user_timeline(user_id = user_id, count = 200)
             else:
-                new_tweets = api.user_timeline(user_id = user_id, count = 200, since_id = latest)
-            new_tweets = [self.parse_tweet(t) for t in new_tweets]
-            for tweet in new_tweets:
-                tweet['user_id'] = user_id
-            self.log.d("get {}'s tweets {} {}-{}".format(user_id, len(new_tweets), new_tweets[0]['created_at'], new_tweets[-1]['created_at']))
+                new_tweets = []
+                finished = False
+                max_id = None
+                while not finished:
+                    api = self.get_idle_api()
+                    if max_id is not None:
+                        page = api.user_timeline(user_id = user_id, count = 200, max_id = max_id) #return less than or equal to latest
+                    else:
+                        page = api.user_timeline(user_id = user_id, count = 200, since_id = latest-1) #return less than or equal to latest
+                    page.sort(key = lambda x:x.id, reverse=True) #smaller index has larger id
+                    if len(page) == 0:
+                        break
+                    max_id = page[-1].id
+                    for t in page:
+                        if t.id > latest:
+                            new_tweets.append(t)
+                        else:
+                            finished = True
+                            break
+            new_tweets = self.parse_tweets(new_tweets, user_id)
+            self.log.d("get {}'s tweets {} {}-{} latest: {}".format(user_id, len(new_tweets), new_tweets[0]['tweet_id'] if new_tweets else None, new_tweets[-1]['tweet_id'] if new_tweets else None, latest))
+            self.log.d("get {}'s tweets {} {}-{} latest: {}".format(user_id, len(new_tweets), new_tweets[0]['created_at'] if new_tweets else None, new_tweets[-1]['created_at'] if new_tweets else None, latest))
             return new_tweets
         except tweepy.RateLimitError:
             self.log.d('RateLimitError')
