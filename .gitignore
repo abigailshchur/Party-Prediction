@@ -16,3 +16,5 @@ jobs/expoert_to_pickle.py
 jobs/find_frequent_terms.py
 
 jobs/scrape_tweets.py
+
+jobs/tweets2.csv

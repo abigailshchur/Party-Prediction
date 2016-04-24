@@ -29,6 +29,8 @@ import id_list
 import json
 import io
 import base64
+import random
+import datetime
 
 stop_words = set([u'all', 'gt', 'forget', 'ron', 'global', 'month', 'steve', 'talks', 'follow', 'chair', 'children', 'issues', 'increase', 'votes', 'voter', 'tx', 'tv', 'tweet', 'obamacare', 'young', u'to', 'program', 'voted', u'under', 'must', 'veterans', 'brown', u'very', 'continues', 'choice', 'facebook', u'yourselves', 'ht', 'school', 'hour', u'did', 'list', 'democrat', 'ryan', 'race', 'team', 'small', 'radio', 'bernie', "i'll", 'mn', 'says', 'leaders', 'excited', 'tea', 'ted', 'sign', 'dnc', 'go', 'rate', 'htt', 'video', 'pass', u'further', 'air', 'even', u'what', 'power', 'anniversary', 'liberty', 'find', 'access', u'above', 'new', 'ever', 'public', 'dem', 'supporting', 'full', 'iran', 'healthcare', 'join', 'men', u'here', 'hours', 'let', 'address', u'hers', '100', 'strong', 'change', 'wait', 'great', 'kids', 'potus', '30', 'social', 'action', 'military', "i'm", 'makes', 'honor', 'via', 'love', 'family', 'win', 'county', 'put', 'patriots', '1st', 'crisis', 'standing', 'discuss', 'use', u'from', 'takes', 'usa', 'visit', 'two', 'next', u'few', 'live', 'call', '6', 'candidates', u'themselves', u'until', 'pres', u'more', 'yes', 'supporters', 'share', 'freedom', 'hold', 'glad', 'women', u'me', 'high', 'word', 'mc', 'rights', u'this', 'work', 'mi', 'mt', u'can', u'of', 'meet', u'my', 'history', 'control', 'trump', 'give', "didn't", 'states', 'heard', 'minimum', 'something', 'want', 'times', 'needs', 'united', 'court', 'protect', 'breaking', '1', u'how', 'interview', 'economy', 'plans', 'may', 'stop', u'after', 'water', 'wrong', 'birthday', 'coming', u'such', 'law', 'fl', 'response', 'man', u'a', 'remember', 'save', 'st', u'so', 'media', 'every', 'democratic', 'talk', "that's", 'bush', 'help', 'office', "don't", u'over', 'move', 'trade', u'through', 'unite', 'committee', 'cuts', 'still', u'its', u'before', 'police', 'thank', "he's", 'fix', 'better', '2015', u'ours', 'msnbc', 'bipartisan', 'petition', '2012', u'then', u'them', 'good', 'iowa', 'food', 'dan', 'safe', "obama's", u'they', u'not', u'now', 'hall', u'nor', 'equality', 'name', 'always', '--', 'boehner', 'victory', 'truth', u'each', 'done', 'bills', "isn't", 'everyone', 'covered', u'doing', 'ed', 'energy', 'hard', 'rally', 'joined', 'year', u'our', 'calling', 'saturday', 'special', u'out', u'rt', 'perry', 'funding', 'won', 'rs', 'miss', 'rep', 'since', 'looking', 're', 'health', 'hill', '7', 'got', 'get', 'gov', 'issue', 'gop', 'red', 'shows', 'tcot', "you're", 'friday', 'little', 'free', '20', 'members', 'ask', 'care', 'benefits', 'district', 'discussing', 'could', 'florida', 'days', 'david', 'thing', 'american', 'place', "today's", 'cain', 'polls', 'think', 'south', 'first', 'already', 'city', 'xl', 'feel', 'legislation', 'primary', u'yourself', 'americans', 'another', 'president', 'vote', 'message', 'fight', 'open', 'tomorrow', 'millions', "doesn't", 'story', 'service', 'together', 'top', 'system', u'their', 'attack', '2', u'too', 'statement', 'tom', 'white', 'john', 'final', 'friend', 'listen', 'passed', u'that', 'convention', 'hillary', 'part', 'believe', u'herself', u'than', "here's", 'obama', '11', 'king', '13', 'b', '15', '14', '16', 'project', 'matter', 'cost', 'marriage', 'speaking', u'were', 'sec', u'and', 'tonight', 'talking', 'say', u'have', 'need', u'any', 'congrats', 'congressional', '-', 'also', 'without', 'take', u'which', 'online', 'blue', 'sure', u'who', u'most', 'plan', 'letter', 'sb', 'nothing', 'america', u'why', 'million', 'volunteers', u'don', 'clear', 'proud', 'm', 'face', 'clean', 'latest', 'fact', 'joining', 'show', 'bring', 'businesses', 'democrats', '2013', 'debate', 'staff', 'one', 'o', 'justice', 'true', 'unemployment', 'enough', "won't", u'should', u'only', 'going', 'black', 'rick', 'photo', 'folks', '8', 'watching', 'local', 'hope', u'do', u'his', 'means', 'michigan', 'de', 'watch', 'dc', '12', 'report', u'during', 'years', 'dr', u'him', 'celebrate', 'h', 'taxes', 'morning', 'reid', 'bad', u'she', 'ohio', u'where', 'learn', 'fair', 'govt', 'national', 'see', 'college', u'are', 'sen', 'retweet', 'best', '03', 'said', 'reform', 'federal', 'away', 'please', 'mayor', '3', 'future', u'between', 'progress', 'across', 'caucus', 'affordable', u'we', 'never', 'jobs', 'capitol', 'wi', 'job', 'cut', 'joe', 'group', 'debt', 'come', u'both', 'climate', 'last', 'candidate', 'country', 'taking', 'la', 'equal', u'against', u's', 'senator', "can't", 'insurance', 'co', 'ca', 'community', 'news', 'poll', 'speak', 'conference', 'blog', 'raise', 'union', 'west', 'create', 'political', u'been', 'mark', u'whom', 'pa', 'meeting', 'pm', 'wants', 'sanders', 'life', 'families', 'fire', 'romney', 'republicans', 'c', 'al', 'policy', 'lives', '2014', 'former', u'those', 'case', 'commerce', u'myself', '2016', 'look', u'these', 'bill', 'budget', 'governor', 'n', u'will', 'w', u'while', 'texas', 'policies', 'many', 'voice', 'va', 'would', 'voters', u'is', 'speech', u'it', 'middle', u'itself', 'im', 'dems', u'in', 'ready', u'if', 'il', 'pay', 'make', 'tour', u'same', 'rules', 'speaker', '9', 'party', 'gets', "it's", 'higher', 'week', 'http', 'yesterday', 'running', '000', 'student', 'nation', 'opportunity', 'tune', 'keep', 'ofa', u'off', 'center', u'i', 'floor', 'well', 'cruz', 'fighting', 'costs', u'the', u'yours', 'left', 'things', 'icymi', u'just', 'less', u'being', 'money', 'weekend', 'gun', 'schools', 'thanks', 'questions', 'world', 'paul', 'yet', 'wage', 'republican', 'helping', 'campaign', 'ma', 'majority', 'workers', u'had', 'day', 'barack', 'heritage', 'add', '4', 'thoughts', 'tax', u'has', 'tuesday', 'build', 'real', 'march', 'around', 'government', 'read', 'big', 'early', 'game', 'biz', 'know', 'press', 'amp', 'd', 'like', 'lost', '50', 'continue', u't', 'night', 'security', 'works', 'making', 'amendment', u'because', 'old', 'crowd', 'people', 'senate', 'twitter', u'some', 'back', 'donald', 'growth', 'election', 'home', u'ourselves', u'for', 'decision', 'fox', 'conservative', u'does', 'keystone', 'cnn', 'ct', 'leader', u'be', 'run', 'business', 'mitt', 'fed', 'step', 'leadership', 'chairman', 'post', 'r', 'super', u'by', 'hearing', u'on', u'about', 'working', 'oh', u'theirs', 'violence', 'scott', 'stand', 'act', 'congressman', 'efforts', u'or', u'own', 'clinton', u'into', 'washington', 'getting', u'down', 'right', 'honored', u'your', 'deal', u'her', 'spending', 'friends', 'support', u'there', 'question', 'hey', 'long', 'class', 'start', 'much', "we're", 'way', 'house', 'forward', 'yrs', u'was', 'war', 'happy', 'ago', u'himself', 'hr', 'immigration', u'but', 'state', 'hear', 'line', 'bern', u'with', u'he', 'info', 'congratulations', 'made', 'calls', u'up', 'signed', 'tell', 'record', u'below', 'economic', 'stories', 'today', 'problem', 'minutes', 'agree', 'supreme', 'ad', 'ag', u'am', 'mike', u'an', u'as', 'ar', u'at', 'et', 'politics', 'education', 'check', 'nh', u'again', 'us', u'no', 'deserve', 'nc', u'when', 'event', 'end', 'ny', u'other', '5', u'you', 'really', '10', "'s", 'congress', 'students', 'welcome', 'stay', "let's", 'town', 'important', 'coverage', 'chris', 'repeal', 'pelosi', 'billion', 'voting', 'lead', 'using', 'fund', 'daily', 'u', 'time', 'walker', u'having', u'once'])
 
@@ -307,14 +309,7 @@ class Scrapper:
         self.log = Logger("Scrapper")
         self.API_pool = API_pool
         self.scrapper_meta = scrapper_meta
-        self.fetch_complete = set()
         self.callback = callback
-
-    def has_complete(self, user_id):
-        return user_id in self.fetch_complete
-
-    def set_complete(self, user_id):
-        self.fetch_complete.add(user_id)
 
     def scrape(self, target):
         user_id = target['user_id']
@@ -323,28 +318,21 @@ class Scrapper:
             tweets = self.API_pool.fetch_tweets(user_id, latest_tweet_id)
         except tweepy.TweepError as e:
             self.log.d('<{}> TweepError: {}'.format(target['user_id'], str(e)))
-            self.set_complete(user_id)
             return
         except:
             self.log.d('<{}> Unexpected error: {}'.format(target['user_id'], sys.exc_info()[0]))
             raise
         if len(tweets) == 0:
-            self.set_complete(user_id)
             return
         for tweet in tweets:
             self.callback(tweet, target)
             self.scrapper_meta.update_latest_tweet_id_of_user(user_id, tweet['tweet_id'])
 
     def run(self, targets):
-        i = 0
         total = len(targets)
-        while total != len(self.fetch_complete):
-            target = targets[i%total]
+        for i, target in enumerate(targets):
             user_id = target['user_id']
-            i += 1
-            if self.has_complete(user_id):
-                continue
-            self.log.d('run {} user_id: {}'.format(i, user_id))
+            self.log.d('scrape {}th user_id: {} {:0.3f}%'.format(i, user_id, float(i)/total*100))
             try:
                 self.scrape(target)
             except API_pool.AllBusyError:
@@ -415,11 +403,15 @@ class API_pool():
                 while not finished:
                     api = self.get_idle_api()
                     if max_id is not None:
-                        page = api.user_timeline(user_id = user_id, count = 200, max_id = max_id) #return less than or equal to latest
+                        page = api.user_timeline(user_id = user_id, count = 200, max_id = max_id)
                     else:
                         page = api.user_timeline(user_id = user_id, count = 200, since_id = latest-1) #return less than or equal to latest
                     page.sort(key = lambda x:x.id, reverse=True) #smaller index has larger id
                     if len(page) == 0:
+                        break
+                    self.log.d("get {}'s tweets page {} {}-{} latest: {}".format(user_id, len(page), page[0].id if page else None, page[-1].id if page else None, latest))
+                    if max_id is not None and page[-1].id >= max_id:
+                        self.log.d('fetch tweet error old_max_id={} <= new_max_id={}'.format(max_id, page[-1].id))
                         break
                     max_id = page[-1].id
                     for t in page:
@@ -428,6 +420,8 @@ class API_pool():
                         else:
                             finished = True
                             break
+                    if len(page) < 200:
+                        break
             new_tweets = self.parse_tweets(new_tweets, user_id)
             self.log.d("get {}'s tweets {} {}-{} latest: {}".format(user_id, len(new_tweets), new_tweets[0]['tweet_id'] if new_tweets else None, new_tweets[-1]['tweet_id'] if new_tweets else None, latest))
             self.log.d("get {}'s tweets {} {}-{} latest: {}".format(user_id, len(new_tweets), new_tweets[0]['created_at'] if new_tweets else None, new_tweets[-1]['created_at'] if new_tweets else None, latest))
@@ -438,6 +432,8 @@ class API_pool():
             return self.fetch_tweets(user_id, latest)
 
 def build_targets(democrats, republicans):
+    random.shuffle(democrats) #in case all keys get RateLimitError
+    random.shuffle(republicans)
     targets = []
     i = 0
     while True:
@@ -450,9 +446,14 @@ def build_targets(democrats, republicans):
         i += 1
     return targets
 
+def get_section(l):
+    i = datetime.datetime.now().minute / 25
+    return l[int(len(l)*0.25*i):int(len(l)*0.25*(i+1))]
+
 if __name__ == '__main__':
     log = Logger('main')
-    targets = build_targets(id_list.democrats, id_list.republicans)
+    targets = build_targets(get_section(id_list.democrats), get_section(id_list.republicans))
+    log.d('#targets: {}'.format(len(targets)))
     url = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/cs4300')
     parsed_url = urlsplit(url)
     db_name = parsed_url.path[1:]
