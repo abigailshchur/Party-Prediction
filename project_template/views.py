@@ -42,14 +42,20 @@ def get_top_events(n):
     #sample result [{u'popularity': 611.0, u'event': u'GOP'}, {u'popularity': 614.0, u'event': u'tcot'}]
     return list(event_popularity.find({}, {'event':1, 'popularity':1, '_id':0}).sort('popularity', -1).limit(n))
 
+def format_suggestion(query, l):
+    r = {};
+    r['query'] = query;
+    r['suggestions'] = [{'value':x['event'], 'data':x['event']} for x in l]
+    return r;
+
 def search_hint(request):
     #url example /pt/search_hint?query=[...]
     n = 10
     if request.GET.get('query'):
         query = request.GET.get('query')
-        return JsonResponse(get_event_hint(query, n), safe=False)
+        return JsonResponse(format_suggestion(query, get_event_hint(query, n)), safe=False)
     else:
-        return JsonResponse(get_top_events(n), safe=False)
+        return JsonResponse(format_suggestion('', get_top_events(n)), safe=False)
 
 # Create your views here.
 def index(request):
