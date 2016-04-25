@@ -178,6 +178,16 @@ class Unigram_Classifier_DB:
             self.classifier_tweets.insert_many(to_add_all)
         self.classifier_tweets_cache.clear()
 
+    def flush_event_supplementary(self):
+        pipline = [{'$match'  : {}},
+            	   {'$project': {'event': 1, 'affiliation': 1, 'count': { '$size': '$user_ids' }}},
+            	   {'$group' : { '_id' : '$event', 'popularity': { '$avg': "$count" }}},
+            	   {'$project': {'event': '$_id', 'popularity': 1}},
+                   {'$out': 'unigram_classifier_meta_event_popularity'}
+	               ]
+        self.classifier_meta_event.aggregate(pipline)
+        self.log.d('complete flush_event_supplementary')
+
     def flush(self, insert=False, use_pickle=False):
         self.flush_tweets()
         if (use_pickle):
@@ -207,6 +217,7 @@ class Unigram_Classifier_DB:
                         self.classifier_meta_term.update_one({'event':event, 'affiliation':affiliation}, {"$set": {'user_id_term_pairs':  self.obj_to_binary(user_id_term_pairs) }}, upsert=True)
         self.classifier_meta_event_cache.clear()
         self.classifier_meta_term_cache.clear()
+        self.flush_event_supplementary()
 
     def close(self):
         self.client.close()
