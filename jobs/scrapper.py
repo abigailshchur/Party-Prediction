@@ -444,13 +444,21 @@ def build_targets(democrats, republicans):
         i += 1
     return targets
 
-def get_section(l):
-    i = datetime.datetime.now().minute / 25
-    return l[int(len(l)*0.25*i):int(len(l)*0.25*(i+1))]
+def get_section(l, i, j):
+    print i,j
+    assert i >= 0 and j >= 0 and i < j
+    part_size = float(len(l))/j
+    return l[int(part_size*i) : int(part_size*(i+1))]
 
 if __name__ == '__main__':
     log = Logger('main')
-    targets = build_targets(get_section(id_list.democrats), get_section(id_list.republicans))
+    if len(sys.argv) != 3:
+        raise Exception('wrong number of arguments')
+    democrats_ids = get_section(id_list.democrats, int(sys.argv[1]), int(sys.argv[2]))
+    republicans_ids = get_section(id_list.republicans, int(sys.argv[1]), int(sys.argv[2]))
+    log.d('democrats_ids {} {}-{}'.format(len(democrats_ids), democrats_ids[0], democrats_ids[-1]))
+    log.d('republicans_ids {} {}-{}'.format(len(republicans_ids), republicans_ids[0], republicans_ids[-1]))
+    targets = build_targets(democrats_ids, republicans_ids)
     log.d('#targets: {}'.format(len(targets)))
     url = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/cs4300')
     parsed_url = urlsplit(url)
