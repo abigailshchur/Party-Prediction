@@ -220,7 +220,7 @@ class Unigram_Classifier:
 
     def get_tags(self, tweet):
         text = tweet['text']
-        tags =  set({tag.strip("#") for tag in re.split("'| ", text) if tag.startswith("#")}
+        tags =  set({tag.strip("#") for tag in re.split("'| ", text) if tag.startswith("#")})
         return set([t for t in tags if t != ""])
 
     def clean_text(self, text):
