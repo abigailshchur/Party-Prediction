@@ -61,7 +61,14 @@
 	    <div class="col-md-4 demresults">
 	      {% for line in dems %}
 	      <div class="row tweet">
-		{{line.tweet.text}}<br>
+		{% for word in line.words %}
+		{% if word.highlighted %}
+		    <span class="word-highlight" style="background:{{word.color}}; color:{{word.text_color}}">{{word.text}}</span> 
+		  {% else %}
+		    {{word.text}} 
+		  {% endif %}
+		{% endfor %}
+		<br>
 		<div class="tweetmeta"><div class="col-md-6" style="padding:0">{{line.tweet.created_at}}</div><div class="col-md-6" style="text-align: right; padding:0">Score: {{line.scores.democrats|floatformat:3}}</div></div>
 	      </div>
 	      {% endfor %}
@@ -69,7 +76,13 @@
 	    <div class="col-md-4 neutralresults">
 	      {% for line in neutral %}
 	      <div class="row tweet ">
-		{{line.tweet.text}}<br>
+		{% for word in line.words %}
+		  {% if word.highlighted %}
+		    <span class="word-highlight" style="background:{{word.color}}; color:{{word.text_color}}">{{word.text}}</span> 
+		  {% else %}
+		    {{word.text}} 
+		  {% endif %}
+		{% endfor %}<br>
 		<div class="tweetmeta"><div class="col-md-6" style="padding:0">{{line.tweet.created_at}}</div>
 		  <div class="col-md-3" style="text-align: right; padding:0"><span style="color: #7788AA">Dem:</span> {{line.scores.democrats|floatformat:3}}</div>
 		  <div class="col-md-3" style="text-align: right; padding:0"><span style="color: #D36969">Rep:</span> {{line.scores.republicans|floatformat:3}}</div>
@@ -80,7 +93,13 @@
 	    <div class="col-md-4 represults">
 	      {% for line in reps %}
 	      <div class="row tweet ">
-		{{line.tweet.text}}<br>
+		{% for word in line.words %}
+		  {% if word.highlighted %}
+		    <span class="word-highlight" style="background:{{word.color}}; color:{{word.text_color}}">{{word.text}}</span> 
+		  {% else %}
+		    {{word.text}} 
+		  {% endif %}
+		{% endfor %}<br>
 		<div class="tweetmeta"><div class="col-md-6" style="padding:0">{{line.tweet.created_at}}</div><div class="col-md-6" style="text-align: right; padding:0">Score: {{line.scores.republicans|floatformat:3}}</div></div>
 	      </div>
 	      {% endfor %}

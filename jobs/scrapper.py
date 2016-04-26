@@ -178,6 +178,16 @@ class Unigram_Classifier_DB:
             self.classifier_tweets.insert_many(to_add_all)
         self.classifier_tweets_cache.clear()
 
+    def flush_event_supplementary(self):
+        pipline = [{'$match'  : {}},
+            	   {'$project': {'event': 1, 'affiliation': 1, 'count': { '$size': '$user_ids' }}},
+            	   {'$group' : { '_id' : '$event', 'popularity': { '$avg': "$count" }}},
+            	   {'$project': {'event': '$_id', 'popularity': 1}},
+                   {'$out': 'unigram_classifier_meta_event_popularity'}
+	               ]
+        self.classifier_meta_event.aggregate(pipline)
+        self.log.d('complete flush_event_supplementary')
+
     def flush(self, insert=False, use_pickle=False):
         self.flush_tweets()
         if (use_pickle):
@@ -207,6 +217,7 @@ class Unigram_Classifier_DB:
                         self.classifier_meta_term.update_one({'event':event, 'affiliation':affiliation}, {"$set": {'user_id_term_pairs':  self.obj_to_binary(user_id_term_pairs) }}, upsert=True)
         self.classifier_meta_event_cache.clear()
         self.classifier_meta_term_cache.clear()
+        self.flush_event_supplementary()
 
     def close(self):
         self.client.close()
@@ -247,7 +258,7 @@ class Unigram_Classifier:
                 this_portion = (float(term_count)+1)/(event_counts[affiliation]+1)
                 new_score = this_portion * math.log(this_portion / other_portion)
                 scores[affiliation].append(new_score)
-        return {k:max(v) for k,v in scores.items()}, {k:zip(terms, v) for k,v in scores.items()}
+        return {k:max(v) for k,v in scores.items()}, {k:list(zip(terms, v)) for k,v in scores.items()}
 
     def learn(self, tweet, affiliation):
         terms = self.get_terms(tweet)
@@ -445,7 +456,7 @@ def build_targets(democrats, republicans):
     return targets
 
 def get_section(l, i, j):
-    print i,j
+    print(i,j)
     assert i >= 0 and j >= 0 and i < j
     part_size = float(len(l))/j
     return l[int(part_size*i) : int(part_size*(i+1))]
@@ -463,7 +474,9 @@ if __name__ == '__main__':
     url = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/cs4300')
     parsed_url = urlsplit(url)
     db_name = parsed_url.path[1:]
-    authentications = json.loads(base64.b64decode(os.getenv('TWEET_AUTHENTICATIONS', base64.b64encode('[]'))))
+    authentications = json.loads(str(base64.b64decode(bytes(os.getenv('TWEET_AUTHENTICATIONS'), "UTF-8")), encoding="utf-8"))
+    print(authentications)
+    #authentications = json.loads(str(base64.b64decode(bytes(os.getenv('TWEET_AUTHENTICATIONS'), "UTF-8"))), base64.b64encode(bytes('[]', "UTF-8")))
     #import base64;base64.b64encode(json.dumps(authutications))
     #export TWEET_AUTHENTICATIONS=ABOVE_RESULT_WITHOUT_QUOT
     #authentications = [{"consumer_key": "eNfjPJT12a1aiFGaVSNnn6nTg", "consumer_secret": "wJk3RhuhUo5MFNnnLaJQIM2Q93gFeMMfWGUzoYd6z49z8Kis2w", "access_key": "717950588076601344-yDbU6iN96hMagodDyv2iqTxuiNQ7VkS", "access_secret": "OycOAMytzLXlik4qO32iLWxPoPaqNmoXlDrW6QfhhX7Vd"}]

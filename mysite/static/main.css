@@ -87,3 +87,9 @@
     font-size: 0.8em;
     margin-top: 0.5em;
 }
+
+.word-highlight {
+    border-radius: 3px;
+    padding-left: 0.1em;
+    padding-right: 0.1em;
+}
