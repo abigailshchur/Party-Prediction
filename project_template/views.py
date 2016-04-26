@@ -6,10 +6,8 @@ from django.template import loader
 from .form import QueryForm
 from .test import find_similar
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-import re
-import os
-from django.http import JsonResponse
 
+import os
 try:
     from urlparse import urlsplit
 except ImportError:
@@ -33,7 +31,6 @@ classifier_tweets = db['unigram_classifier_tweets']
 
 events = db['unigram_classifier_meta_event']
 
-<<<<<<< HEAD
 def word_color(x, side_or_neutral):
     for i in range(len(x)):
         line = x[i]
@@ -65,31 +62,6 @@ def word_color(x, side_or_neutral):
             dic["color"] = "rgba(" + str(red) + ",0," + str(blue) + "," + str(alpha) + ")"
             x[i]["words"].append(dic)
     return x
-=======
-event_popularity = db['unigram_classifier_meta_event_popularity']
-
-def get_event_hint(query, n):
-    return list(event_popularity.find({"event": re.compile(query, re.IGNORECASE)}, {'event':1, 'popularity':1, '_id':0}).sort('popularity', -1).limit(n))
-
-def get_top_events(n):
-    #sample result [{u'popularity': 611.0, u'event': u'GOP'}, {u'popularity': 614.0, u'event': u'tcot'}]
-    return list(event_popularity.find({}, {'event':1, 'popularity':1, '_id':0}).sort('popularity', -1).limit(n))
-
-def format_suggestion(query, l):
-    r = {};
-    r['query'] = query;
-    r['suggestions'] = [{'value':x['event'], 'data':x['event']} for x in l]
-    return r;
-
-def search_hint(request):
-    #url example /pt/search_hint?query=[...]
-    n = 10
-    if request.GET.get('query'):
-        query = request.GET.get('query')
-        return JsonResponse(format_suggestion(query, get_event_hint(query, n)), safe=False)
-    else:
-        return JsonResponse(format_suggestion('', get_top_events(n)), safe=False)
->>>>>>> c9ae95d5f05cc239de6327a61927dd6aeaa14f26
 
 # Create your views here.
 def index(request):
