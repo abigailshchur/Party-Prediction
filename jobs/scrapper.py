@@ -227,9 +227,7 @@ class Unigram_Classifier:
         self.db = db
 
     def get_tags(self, tweet):
-        text = tweet['text']
-        tags =  set({tag.strip("#") for tag in re.split("'| ", text) if tag.startswith("#")})
-        return set([t for t in tags if t != ""])
+        return [tag['text'].lower() for tag in tweet['hashtags']]
 
     def clean_text(self, text):
         return re.sub(r"http\S+", "", text)
@@ -391,7 +389,7 @@ class API_pool():
         self.status[i] = time.time() + 15*60 #15 mins
 
     def parse_tweet(self, tweet):
-        return {'tweet_id': tweet.id, 'created_at': tweet.created_at, 'text': tweet.text}
+        return {'tweet_id': tweet.id, 'created_at': tweet.created_at, 'text': tweet.text, 'hashtags': tweet.entities.get('hashtags')}
 
     def parse_tweets(self, tweets, user_id):
         tweets = [self.parse_tweet(t) for t in tweets]
