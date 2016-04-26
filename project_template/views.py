@@ -6,10 +6,10 @@ from django.template import loader
 from .form import QueryForm
 from .test import find_similar
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+
 import re
 import os
 from django.http import JsonResponse
-
 try:
     from urlparse import urlsplit
 except ImportError:
@@ -19,7 +19,7 @@ from pymongo import MongoClient
 url = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/cs4300')
 parsed_url = urlsplit(url)
 db_name = parsed_url.path[1:]
-print(db_name)
+#print(db_name)
 
 client = MongoClient(url)
 db = client[db_name]
@@ -30,17 +30,11 @@ if '@' in url:
     print(user, password)
 
 classifier_tweets = db['unigram_classifier_tweets']
-
 events = db['unigram_classifier_meta_event']
-
 event_popularity = db['unigram_classifier_meta_event_popularity']
-
+ 
 def get_event_hint(query, n):
     return list(event_popularity.find({"event": re.compile(query, re.IGNORECASE)}, {'event':1, 'popularity':1, '_id':0}).sort('popularity', -1).limit(n))
-
-def get_top_events(n):
-    #sample result [{u'popularity': 611.0, u'event': u'GOP'}, {u'popularity': 614.0, u'event': u'tcot'}]
-    return list(event_popularity.find({}, {'event':1, 'popularity':1, '_id':0}).sort('popularity', -1).limit(n))
 
 def format_suggestion(query, l):
     r = {};
@@ -57,9 +51,55 @@ def search_hint(request):
     else:
         return JsonResponse(format_suggestion('', get_top_events(n)), safe=False)
 
+def get_top_events(n):
+    #sample result [{u'popularity': 611.0, u'event': u'GOP'}, {u'popularity': 614.0, u'event': u'tcot'}]
+    x = list(event_popularity.find({}, {'event':1, 'popularity':1, '_id':0}).sort('popularity', -1).limit(n))
+    for i in range(len(x)):
+        dems = list(events.find({"event": x[i]["event"], "affiliation": "democrats"}))#[0]["user_ids"])
+        reps = list(events.find({"event": x[i]["event"], "affiliation": "republicans"}))#[0]["user_ids"])
+        num_dems = sum(len(x["user_ids"]) for x in dems) if len(dems) > 0 else 0
+        num_reps = sum(len(x["user_ids"]) for x in reps) if len(reps) > 0 else 0
+        total = num_dems + num_reps
+        red = int(num_reps / total * 255)
+        blue = int(num_dems / total * 255)
+        print(list(events.find({"event": x[i]["event"], "affiliation": "democrats"})))
+        x[i]["color"] = "rgb(" + str(red) + ",0," + str(blue) + ")"
+    return x
+
+def word_color(x, side_or_neutral):
+    for i in range(len(x)):
+        line = x[i]
+        words = line["tweet"]["text"].split()
+        x[i]["words"] = []
+        for word in words:
+            dic = {}
+            dic["text"] = word.replace("&amp;", "&")
+            red_alpha = 0
+            blue_alpha = 0
+            sides = ["democrats", "republicans"] if side_or_neutral == "neutral" else [side_or_neutral]
+            for side in sides:
+                score_detail = dict(line["score_detail"][side])
+                if word in score_detail:
+                    #print(score_detail[word])
+                    dic["highlighted"] = True
+                    if (score_detail[word] > 0 and side == "democrats") or (score_detail[word] < 0 and side == "republicans"):
+                        blue_alpha = pow(abs(score_detail[word]), 0.3)
+                        #dic["color"] = "rgba(0, 0, 255, " +  + ")"
+                    else:
+                        red_alpha = pow(abs(score_detail[word]), 0.3)
+                        #dic["color"] = "rgba(255, 0, 0, " +  + ")"
+                else:
+                    dic["highlighted"] = False
+            red = int(255 * red_alpha)
+            blue = int(255 * blue_alpha)
+            alpha = red_alpha + blue_alpha*(1-red_alpha)
+            dic["text_color"] = "#000" if alpha < 0.5 else "#ccc"
+            dic["color"] = "rgba(" + str(red) + ",0," + str(blue) + "," + str(alpha) + ")"
+            x[i]["words"].append(dic)
+    return x
+
 # Create your views here.
 def index(request):
-    output_list = ''
     dems = ""
     reps = ""
     neutral = ""
@@ -73,14 +113,16 @@ def index(request):
         neutral = classifier_tweets.find({'event': search})
         neutral = list(sorted(neutral, key=lambda x:max(x["scores"]["democrats"], x["scores"]["republicans"])))[:10]
 
-        #output_list = find_similar(search)
-        #paginator = Paginator(output_list, 10)
-        # print(output_list[:10])
+        dems = word_color(dems, "democrats")
+        reps = word_color(reps, "republicans")
+        neutral = word_color(neutral, "neutral")
+        
         page = request.GET.get('page')
     return render_to_response('project_template/index.html',
                           {'dems': dems,
                            'reps': reps,
                            'neutral': neutral,
                            'search': search,
+                           'top_events': get_top_events(30),
                            'magic_url': request.get_full_path(),
                            })
