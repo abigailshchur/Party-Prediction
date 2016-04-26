@@ -474,9 +474,8 @@ if __name__ == '__main__':
     url = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/cs4300')
     parsed_url = urlsplit(url)
     db_name = parsed_url.path[1:]
-    authentications = json.loads(str(base64.b64decode(bytes(os.getenv('TWEET_AUTHENTICATIONS'), "UTF-8")), encoding="utf-8"))
-    print(authentications)
-    #authentications = json.loads(str(base64.b64decode(bytes(os.getenv('TWEET_AUTHENTICATIONS'), "UTF-8"))), base64.b64encode(bytes('[]', "UTF-8")))
+    authentications = json.loads(base64.b64decode(os.getenv('TWEET_AUTHENTICATIONS', 'W10=').encode('ascii')).decode('ascii'))
+    #log.d(str(authentications))
     #import base64;base64.b64encode(json.dumps(authutications))
     #export TWEET_AUTHENTICATIONS=ABOVE_RESULT_WITHOUT_QUOT
     #authentications = [{"consumer_key": "eNfjPJT12a1aiFGaVSNnn6nTg", "consumer_secret": "wJk3RhuhUo5MFNnnLaJQIM2Q93gFeMMfWGUzoYd6z49z8Kis2w", "access_key": "717950588076601344-yDbU6iN96hMagodDyv2iqTxuiNQ7VkS", "access_secret": "OycOAMytzLXlik4qO32iLWxPoPaqNmoXlDrW6QfhhX7Vd"}]
