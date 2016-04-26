@@ -139,10 +139,17 @@ var fill = function(d, i) {
   return topEvents[i].color;
 }
 
+var maxPop = 0;
+for (var i = 0; i < topEvents.length; i++) {
+  if (topEvents[i].popularity > maxPop)
+    maxPop = topEvents[i].popularity;
+}
+var norm = 100.0 / maxPop;
+
 var ht = isSearch ? 200 : 480
 d3.layout.cloud().size([640, ht])
   .words(topEvents.map(function(d) {
-    return {text: d.event, size: d.popularity * (isSearch ? 0.5 : 1)};
+    return {text: d.event, size: d.popularity * norm * (isSearch ? 0.5 : 1)};
   }))
   .rotate(function() { return 0; })
   .font("Impact")
