@@ -2,6 +2,22 @@
     <head>
         <link rel="stylesheet" href="/static/bootstrap.min.css">
         <link rel="stylesheet" href="/static/main.css">
+	
+        <script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+  <script src="/static/cloud.js"></script>
+          <link rel="stylesheet" href="css/autocomplete.css" type="text/css">
+         <script  src="https://code.jquery.com/jquery-2.2.3.min.js"   integrity="sha256-a23g1Nt4dtEYOj7bR+vTu7+T8VP13humZFBJNIYoEJo=" crossorigin="anonymous"></script>
+         <script  src="https://cdnjs.cloudflare.com/ajax/libs/jquery.devbridge-autocomplete/1.2.24/jquery.autocomplete.js"></script>
+         <script>
+         $(document).ready(function(){
+             $('#event_query').autocomplete({
+                 serviceUrl: '/pt/search_hint',
+                 onSelect: function (suggestion) {
+                     window.location.replace("?search="+suggestion.value);
+                 }
+             });
+         });
+         </script>
     </head>
 
     <body>
@@ -37,18 +53,20 @@
 	      <br><br>
 
 	      <div class="form-group">
-		  <input id="input" type="text" name="search" class="form-control" placeholder="Search a hashtag">
+		  <input id="event_query" type="text" name="search" class="form-control" placeholder="Search a hashtag">
 	      </div>
 	      <button type="submit" class="btn btn-info"> Go! </button>
 	  </form>
+  
+  {% load extra_math %}
+          <div id="tag-cloud"></div>
 
-	  {% load extra_math %}
 	  {% if search %}
 	    <div class="row" style="text-align: center; margin-bottom: 1em">
 	      <span class="h1">#{{search}}</span>
 	    </div>
-	  {% endif %}
-	  {% if dems %}
+          {% endif %}
+	  {% if search %}
 	  <div class="row">
 	    <div class="col-md-4 dems"><span class="h3">Most Democratic</span>
 	    </div>
@@ -113,5 +131,45 @@
 	    {% endif %}
 	  {% endif %}
       </div>
+
+<script>
+var isSearch = {{search | js}} !== "";
+var topEvents = {{top_events | js}};
+var fill = function(d, i) {
+  return topEvents[i].color;
+}
+
+var ht = isSearch ? 200 : 480
+d3.layout.cloud().size([640, ht])
+  .words(topEvents.map(function(d) {
+    return {text: d.event, size: d.popularity * (isSearch ? 0.5 : 1)};
+  }))
+  .rotate(function() { return 0; })
+  .font("Impact")
+  .fontSize(function(d) { return d.size; })
+  .on("end", draw)
+  .start();
+
+function draw(words) {
+  d3.select("#tag-cloud").append("svg")
+    .attr("width", "100%")
+    .attr("height", ht)
+    .append("g")
+    .attr("transform", "translate(" + (window.innerWidth / 2) + ", " + (ht / 2) + ")")
+    .selectAll("text")
+    .data(words)
+    .enter().append("text")
+    .style("font-size", function(d) { return d.size + "px"; })
+    .style("font-family", "Impact")
+    .style("fill", function(d, i) { return fill(d, i); })
+    .attr("text-anchor", "middle")
+    .attr("cursor", "pointer")
+    .attr("transform", function(d) {
+      return "translate(" + [d.x, d.y] + ")rotate(" + d.rotate + ")";
+    })
+    .text(function(d) { return d.text; })
+    .on("click", function(d, i) { document.location.href = "/pt/?search=" + d.text });
+}
+</script>
     </body>
 </html>

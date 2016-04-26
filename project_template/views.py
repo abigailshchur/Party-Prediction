@@ -7,7 +7,9 @@ from .form import QueryForm
 from .test import find_similar
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
+import re
 import os
+from django.http import JsonResponse
 try:
     from urlparse import urlsplit
 except ImportError:
@@ -17,7 +19,7 @@ from pymongo import MongoClient
 url = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/cs4300')
 parsed_url = urlsplit(url)
 db_name = parsed_url.path[1:]
-print(db_name)
+#print(db_name)
 
 client = MongoClient(url)
 db = client[db_name]
@@ -28,8 +30,41 @@ if '@' in url:
     print(user, password)
 
 classifier_tweets = db['unigram_classifier_tweets']
-
 events = db['unigram_classifier_meta_event']
+event_popularity = db['unigram_classifier_meta_event_popularity']
+ 
+def get_event_hint(query, n):
+    return list(event_popularity.find({"event": re.compile(query, re.IGNORECASE)}, {'event':1, 'popularity':1, '_id':0}).sort('popularity', -1).limit(n))
+
+def format_suggestion(query, l):
+    r = {};
+    r['query'] = query;
+    r['suggestions'] = [{'value':x['event'], 'data':x['event']} for x in l]
+    return r;
+
+def search_hint(request):
+    #url example /pt/search_hint?query=[...]
+    n = 10
+    if request.GET.get('query'):
+        query = request.GET.get('query')
+        return JsonResponse(format_suggestion(query, get_event_hint(query, n)), safe=False)
+    else:
+        return JsonResponse(format_suggestion('', get_top_events(n)), safe=False)
+
+def get_top_events(n):
+    #sample result [{u'popularity': 611.0, u'event': u'GOP'}, {u'popularity': 614.0, u'event': u'tcot'}]
+    x = list(event_popularity.find({}, {'event':1, 'popularity':1, '_id':0}).sort('popularity', -1).limit(n))
+    for i in range(len(x)):
+        dems = list(events.find({"event": x[i]["event"], "affiliation": "democrats"}))#[0]["user_ids"])
+        reps = list(events.find({"event": x[i]["event"], "affiliation": "republicans"}))#[0]["user_ids"])
+        num_dems = sum(len(x["user_ids"]) for x in dems) if len(dems) > 0 else 0
+        num_reps = sum(len(x["user_ids"]) for x in reps) if len(reps) > 0 else 0
+        total = num_dems + num_reps
+        red = int(num_reps / total * 255)
+        blue = int(num_dems / total * 255)
+        print(list(events.find({"event": x[i]["event"], "affiliation": "democrats"})))
+        x[i]["color"] = "rgb(" + str(red) + ",0," + str(blue) + ")"
+    return x
 
 def word_color(x, side_or_neutral):
     for i in range(len(x)):
@@ -88,5 +123,6 @@ def index(request):
                            'reps': reps,
                            'neutral': neutral,
                            'search': search,
+                           'top_events': get_top_events(30),
                            'magic_url': request.get_full_path(),
                            })

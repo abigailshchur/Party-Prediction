@@ -15,3 +15,11 @@ def fadd(value, arg):
         return float(value) + float(arg)
     except (ValueError, ZeroDivisionError):
         return None
+
+from django.utils.safestring import mark_safe
+
+import json
+
+@register.filter(is_safe=True)
+def js(obj):
+    return mark_safe(json.dumps(obj))
