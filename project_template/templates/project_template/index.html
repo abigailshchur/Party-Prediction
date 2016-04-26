@@ -2,6 +2,19 @@
     <head>
         <link rel="stylesheet" href="/static/bootstrap.min.css">
         <link rel="stylesheet" href="/static/main.css">
+        <link rel="stylesheet" href="css/autocomplete.css" type="text/css">
+        <script  src="https://code.jquery.com/jquery-2.2.3.min.js"   integrity="sha256-a23g1Nt4dtEYOj7bR+vTu7+T8VP13humZFBJNIYoEJo="   crossorigin="anonymous"></script>
+        <script  src="https://cdnjs.cloudflare.com/ajax/libs/jquery.devbridge-autocomplete/1.2.24/jquery.autocomplete.js"></script>
+        <script>
+        $(document).ready(function(){
+            $('#event_query').autocomplete({
+                serviceUrl: '/pt/search_hint',
+                onSelect: function (suggestion) {
+                    window.location.replace("?search="+suggestion.value);
+                }
+            });
+        });
+        </script>
     </head>
 
     <body>
@@ -37,7 +50,7 @@
 	      <br><br>
 
 	      <div class="form-group">
-		  <input id="input" type="text" name="search" class="form-control" placeholder="Search a hashtag">
+		  <input id="event_query" type="text" name="search" class="form-control" placeholder="Search a hashtag">
 	      </div>
 	      <button type="submit" class="btn btn-info"> Go! </button>
 	  </form>
