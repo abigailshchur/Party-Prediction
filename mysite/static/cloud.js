@@ -42,8 +42,8 @@
             d;
         while (+new Date - start < timeInterval && ++i < n && timer) {
           d = data[i];
-          d.x = (size[0] * (Math.random() + .5)) >> 1;
-          d.y = (size[1] * (Math.random() + .5)) >> 1;
+          d.x = (size[0] * (Math.seededRandom() + .5)) >> 1;
+          d.y = (size[1] * (Math.seededRandom() + .5)) >> 1;
           cloudSprite(d, data, i);
           if (place(board, d, bounds)) {
             tags.push(d);
@@ -82,7 +82,7 @@
           startY = tag.y,
           maxDelta = Math.sqrt(size[0] * size[0] + size[1] * size[1]),
           s = spiral(size),
-          dt = Math.random() < .5 ? 1 : -1,
+          dt = Math.seededRandom() < .5 ? 1 : -1,
           t = -dt,
           dxdy,
           dx,
@@ -190,7 +190,7 @@
   }
 
   function cloudRotate() {
-    return (~~(Math.random() * 6) - 3) * 30;
+    return (~~(Math.seededRandom() * 6) - 3) * 30;
   }
 
   function cloudPadding() {
