@@ -32,9 +32,9 @@ if '@' in url:
 classifier_tweets = db['unigram_classifier_tweets']
 events = db['unigram_classifier_meta_event']
 event_popularity = db['unigram_classifier_meta_event_popularity']
- 
+
 def get_event_hint(query, n):
-    return list(event_popularity.find({"event": re.compile(query, re.IGNORECASE)}, {'event':1, 'popularity':1, '_id':0}).sort('popularity', -1).limit(n))
+    return list(event_popularity.find({"event": re.compile(query, re.IGNORECASE)}, {'event':1, '_id':0}).sort('avg', -1).limit(n))
 
 def format_suggestion(query, l):
     r = {};
@@ -52,19 +52,22 @@ def search_hint(request):
         return JsonResponse(format_suggestion('', get_top_events(n)), safe=False)
 
 def get_top_events(n):
-    #sample result [{u'popularity': 611.0, u'event': u'GOP'}, {u'popularity': 614.0, u'event': u'tcot'}]
-    x = list(event_popularity.find({}, {'event':1, 'popularity':1, '_id':0}).sort('popularity', -1).limit(n))
-    for i in range(len(x)):
-        dems = list(events.find({"event": x[i]["event"], "affiliation": "democrats"}))#[0]["user_ids"])
-        reps = list(events.find({"event": x[i]["event"], "affiliation": "republicans"}))#[0]["user_ids"])
-        num_dems = sum(len(x["user_ids"]) for x in dems) if len(dems) > 0 else 0
-        num_reps = sum(len(x["user_ids"]) for x in reps) if len(reps) > 0 else 0
+    #sample result [{"republicans" : 875, "avg" : 674, "democrats" : 473, "event" : "gop" }]
+    items = list(event_popularity.find({}).sort('avg', -1).limit(n))
+    for item in items:
+        item['popularity'] = item['avg']
+        if 'democrats' not in item:
+            item['democrats'] = 0
+        if 'republicans' not in item:
+            item['republicans'] = 0
+        num_dems = item['democrats']
+        num_reps = item['republicans']
         total = num_dems + num_reps
-        red = int(num_reps / total * 255)
-        blue = int(num_dems / total * 255)
-        print(list(events.find({"event": x[i]["event"], "affiliation": "democrats"})))
-        x[i]["color"] = "rgb(" + str(red) + ",0," + str(blue) + ")"
-    return x
+        red = int(float(num_reps) / total * 255)
+        blue = int(float(num_dems) / total * 255)
+        item["color"] = "rgb(" + str(red) + ",0," + str(blue) + ")"
+    print items[0]
+    return items
 
 def word_color(x, side_or_neutral):
     for i in range(len(x)):
@@ -98,6 +101,23 @@ def word_color(x, side_or_neutral):
             x[i]["words"].append(dic)
     return x
 
+def distinct(l, key):
+    s = set()
+    r = []
+    for x in l:
+        if key(x) not in s:
+            r.append(x)
+            s.add(key(x))
+    return r
+
+def get_to_tweets(event):
+    tweets = list(classifier_tweets.find({'event': event}))
+    tweets = distinct(tweets, lambda x: x['tweet']['text'])
+    dems = sorted(tweets, key=lambda x: x["scores"]["democrats"],   reverse=True)
+    reps = sorted(tweets, key=lambda x: x["scores"]["republicans"], reverse=True)
+    neutral = sorted(tweets, key=lambda x:max(x["scores"]["democrats"], x["scores"]["republicans"]))
+    return (dems[:10], reps[:10], neutral[:10])
+
 # Create your views here.
 def index(request):
     dems = ""
@@ -106,17 +126,12 @@ def index(request):
     search = ""
     if request.GET.get('search'):
         search = request.GET.get('search')
-        dems = classifier_tweets.find({'event': search}).sort("scores.democrats", -1)
-        dems = list(dems)[:10]
-        reps = classifier_tweets.find({'event': search}).sort("scores.republicans", -1)
-        reps = list(reps)[:10]
-        neutral = classifier_tweets.find({'event': search})
-        neutral = list(sorted(neutral, key=lambda x:max(x["scores"]["democrats"], x["scores"]["republicans"])))[:10]
+        dems, reps, neutral = get_to_tweets(search)
 
         dems = word_color(dems, "democrats")
         reps = word_color(reps, "republicans")
         neutral = word_color(neutral, "neutral")
-        
+
         page = request.GET.get('page')
     return render_to_response('project_template/index.html',
                           {'dems': dems,
