@@ -176,12 +176,20 @@ class Unigram_Classifier_DB:
         self.classifier_tweets_cache.clear()
 
     def flush_event_supplementary(self):
+        group_stage = { '_id' : '$event', 'avg': { '$avg': "$count" }}
+        for affiliation in self.affiliations:
+        	group_stage[affiliation] = { '$sum': { '$cond': [ { '$eq': [ "$affiliation", affiliation ] }, "$count", 0 ] } }
+            
+        project_stage = {'event': '$_id', 'avg': 1}
+        for affiliation in self.affiliations:
+        	project_stage[affiliation] = 1
+
         pipline = [{'$match'  : {}},
             	   {'$project': {'event': 1, 'affiliation': 1, 'count': { '$size': '$user_ids' }}},
-            	   {'$group' : { '_id' : '$event', 'popularity': { '$avg': "$count" }}},
-            	   {'$project': {'event': '$_id', 'popularity': 1}},
-                   {'$out': 'unigram_classifier_meta_event_popularity'}
-	               ]
+            	   {'$group' : group_stage},
+            	   {'$project': project_stage},
+            	   {'$out': 'unigram_classifier_meta_event_popularity' }
+        	      ]
         self.classifier_meta_event.aggregate(pipline)
         self.log.d('complete flush_event_supplementary')
 
