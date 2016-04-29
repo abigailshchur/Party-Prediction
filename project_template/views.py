@@ -18,7 +18,7 @@ except ImportError:
 
 from pymongo import MongoClient
 
-from project_template import classifier
+#from project_template import classifier
 
 url = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/cs4300')
 parsed_url = urlsplit(url)
@@ -127,16 +127,16 @@ def get_to_tweets(event):
     dems = list(sorted(tweets, key=lambda x: x["scores"]["democrats"],   reverse=True))
     reps = list(sorted(tweets, key=lambda x: x["scores"]["republicans"], reverse=True))
 
-    neu_classes = classifier.predict(tweets)
-    neutral = [x for i, x in enumerate(tweets) if neu_classes[i] == 1]
-    neutral = list(sorted(neutral, key=lambda x:max(x["scores"]["democrats"], x["scores"]["republicans"])))
+    #neu_classes = classifier.predict(tweets)
+    #neutral = [x for i, x in enumerate(tweets) if neu_classes[i] == 1]
+    neutral = list(sorted(tweets, key=lambda x:max(x["scores"]["democrats"], x["scores"]["republicans"])))
 
-    print("#### DEMS ######")
-    print(classifier.predict(dems))
-    print("#### REPS ######")
-    print(classifier.predict(reps))
-    print("#### NEUTRAL ######")
-    print(classifier.predict(neutral))
+    #print("#### DEMS ######")
+    #print(classifier.predict(dems))
+    #print("#### REPS ######")
+    #print(classifier.predict(reps))
+    #print("#### NEUTRAL ######")
+    #print(classifier.predict(neutral))
     return (dems[:10], reps[:10], neutral[:10])
 
 # Create your views here.
