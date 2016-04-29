@@ -14,7 +14,7 @@ try:
     from urlparse import urlsplit
 except ImportError:
     from urllib.parse import urlsplit
-from nltk.sentiment.vader import SentimentIntensityAnalyzer
+#from nltk.sentiment.vader import SentimentIntensityAnalyzer
 
 from pymongo import MongoClient
 
