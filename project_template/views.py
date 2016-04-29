@@ -14,7 +14,11 @@ try:
     from urlparse import urlsplit
 except ImportError:
     from urllib.parse import urlsplit
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+
 from pymongo import MongoClient
+
+from project_template import classifier
 
 url = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/cs4300')
 parsed_url = urlsplit(url)
@@ -32,6 +36,8 @@ if '@' in url:
 classifier_tweets = db['unigram_classifier_tweets']
 events = db['unigram_classifier_meta_event']
 event_popularity = db['unigram_classifier_meta_event_popularity']
+
+#print(urllib.request.urlopen("http://www.sentiment140.com/api/classify?text=new+moon+is+awesome&query=new+moon").read())
 
 def get_event_hint(query, n):
     return list(event_popularity.find({"event": re.compile(query, re.IGNORECASE)}, {'event':1, '_id':0}).sort('avg', -1).limit(n))
@@ -66,7 +72,7 @@ def get_top_events(n):
         red = int(float(num_reps) / total * 255)
         blue = int(float(num_dems) / total * 255)
         item["color"] = "rgb(" + str(red) + ",0," + str(blue) + ")"
-    print items[0]
+    print(items[0])
     return items
 
 def word_color(x, side_or_neutral):
@@ -110,12 +116,27 @@ def distinct(l, key):
             s.add(key(x))
     return r
 
+#def mostly_neu(d):
+#    return d["neu"] > d["pos"] and d["neu"] > d["neg"]
+
 def get_to_tweets(event):
+    #sid = SentimentIntensityAnalyzer()
+
     tweets = list(classifier_tweets.find({'event': event}))
     tweets = distinct(tweets, lambda x: x['tweet']['text'])
-    dems = sorted(tweets, key=lambda x: x["scores"]["democrats"],   reverse=True)
-    reps = sorted(tweets, key=lambda x: x["scores"]["republicans"], reverse=True)
-    neutral = sorted(tweets, key=lambda x:max(x["scores"]["democrats"], x["scores"]["republicans"]))
+    dems = list(sorted(tweets, key=lambda x: x["scores"]["democrats"],   reverse=True))
+    reps = list(sorted(tweets, key=lambda x: x["scores"]["republicans"], reverse=True))
+
+    neu_classes = classifier.predict(tweets)
+    neutral = [x for i, x in enumerate(tweets) if neu_classes[i] == 1]
+    neutral = list(sorted(neutral, key=lambda x:max(x["scores"]["democrats"], x["scores"]["republicans"])))
+
+    print("#### DEMS ######")
+    print(classifier.predict(dems))
+    print("#### REPS ######")
+    print(classifier.predict(reps))
+    print("#### NEUTRAL ######")
+    print(classifier.predict(neutral))
     return (dems[:10], reps[:10], neutral[:10])
 
 # Create your views here.

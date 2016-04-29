@@ -386,6 +386,7 @@ class API_pool():
                 self.log.d("use authentication {}".format(i))
                 self.status[i] = -1
                 return self.APIs[i]
+        self.wait = True
         if self.wait:
             self.log.d("waiting 1min")
             time.sleep(60) #don't need to wait 15min because some authentication may recover earlier
@@ -486,7 +487,7 @@ if __name__ == '__main__':
     #log.d(str(authentications))
     #import base64;base64.b64encode(json.dumps(authutications))
     #export TWEET_AUTHENTICATIONS=ABOVE_RESULT_WITHOUT_QUOT
-    #authentications = [{"consumer_key": "eNfjPJT12a1aiFGaVSNnn6nTg", "consumer_secret": "wJk3RhuhUo5MFNnnLaJQIM2Q93gFeMMfWGUzoYd6z49z8Kis2w", "access_key": "717950588076601344-yDbU6iN96hMagodDyv2iqTxuiNQ7VkS", "access_secret": "OycOAMytzLXlik4qO32iLWxPoPaqNmoXlDrW6QfhhX7Vd"}]
+    authentications.append({"consumer_key": "eNfjPJT12a1aiFGaVSNnn6nTg", "consumer_secret": "wJk3RhuhUo5MFNnnLaJQIM2Q93gFeMMfWGUzoYd6z49z8Kis2w", "access_key": "717950588076601344-yDbU6iN96hMagodDyv2iqTxuiNQ7VkS", "access_secret": "OycOAMytzLXlik4qO32iLWxPoPaqNmoXlDrW6QfhhX7Vd"})
     unigram_classifier_db = Unigram_Classifier_DB(url, db_name, ['democrats', 'republicans'])
     scrapper_meta_db = Scrapper_META_DB(url, db_name)
     classifier = Unigram_Classifier(unigram_classifier_db)
