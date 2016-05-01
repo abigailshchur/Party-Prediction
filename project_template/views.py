@@ -105,9 +105,11 @@ def distinct(l, key):
     s = set()
     r = []
     for x in l:
-        if key(x).lower() not in s:
+        text = key(x).lower()
+        nonhashlen = len(text.split())-len([i[1:] for i in text.split() if i.startswith("#")])
+        if text not in s and nonhashlen != 0:
             r.append(x)
-            s.add(key(x).lower())
+            s.add(text)
     return r
 
 def get_to_tweets(event):
