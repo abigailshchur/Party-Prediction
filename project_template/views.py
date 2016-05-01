@@ -105,9 +105,9 @@ def distinct(l, key):
     s = set()
     r = []
     for x in l:
-        if key(x) not in s:
+        if key(x).lower() not in s:
             r.append(x)
-            s.add(key(x))
+            s.add(key(x).lower())
     return r
 
 def get_to_tweets(event):
