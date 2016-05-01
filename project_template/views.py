@@ -107,7 +107,7 @@ def distinct(l, key):
     for x in l:
         text = key(x).lower()
         nonhashlen = len(text.split())-len([i[1:] for i in text.split() if i.startswith("#")])
-        if text not in s and nonhashlen != 0:
+        if text not in s and nonhashlen > 1:
             r.append(x)
             s.add(text)
     return r
