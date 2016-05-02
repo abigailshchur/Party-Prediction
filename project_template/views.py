@@ -14,7 +14,12 @@ try:
     from urlparse import urlsplit
 except ImportError:
     from urllib.parse import urlsplit
+#from nltk.sentiment.vader import SentimentIntensityAnalyzer
+
 from pymongo import MongoClient
+import tweepy
+
+#from project_template import classifier
 
 url = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/cs4300')
 parsed_url = urlsplit(url)
@@ -32,6 +37,8 @@ if '@' in url:
 classifier_tweets = db['unigram_classifier_tweets']
 events = db['unigram_classifier_meta_event']
 event_popularity = db['unigram_classifier_meta_event_popularity']
+
+#print(urllib.request.urlopen("http://www.sentiment140.com/api/classify?text=new+moon+is+awesome&query=new+moon").read())
 
 def get_event_hint(query, n):
     return list(event_popularity.find({"event": re.compile(query, re.IGNORECASE)}, {'event':1, '_id':0}).sort('avg', -1).limit(n))
@@ -66,7 +73,7 @@ def get_top_events(n):
         red = int(float(num_reps) / total * 255)
         blue = int(float(num_dems) / total * 255)
         item["color"] = "rgb(" + str(red) + ",0," + str(blue) + ")"
-    print items[0]
+    print(items[0])
     return items
 
 def word_color(x, side_or_neutral):
@@ -105,20 +112,40 @@ def distinct(l, key):
     s = set()
     r = []
     for x in l:
-        text = key(x).lower().strip()
-        nonhashlen = len(text.split())-len([i[1:] for i in text.split() if i.startswith("#")])
-        if text not in s and nonhashlen > 1:
+        if key(x) not in s:
             r.append(x)
-            s.add(text)
+            s.add(key(x))
     return r
 
+#def mostly_neu(d):
+#    return d["neu"] > d["pos"] and d["neu"] > d["neg"]
+
 def get_to_tweets(event):
+    #sid = SentimentIntensityAnalyzer()
+
     tweets = list(classifier_tweets.find({'event': event}))
     tweets = distinct(tweets, lambda x: x['tweet']['text'])
-    dems = sorted(tweets, key=lambda x: x["scores"]["democrats"],   reverse=True)
-    reps = sorted(tweets, key=lambda x: x["scores"]["republicans"], reverse=True)
-    neutral = sorted(tweets, key=lambda x:max(x["scores"]["democrats"], x["scores"]["republicans"]))
+    dems = list(sorted(tweets, key=lambda x: x["scores"]["democrats"],   reverse=True))
+    reps = list(sorted(tweets, key=lambda x: x["scores"]["republicans"], reverse=True))
+
+    #neu_classes = classifier.predict(tweets)
+    #neutral = [x for i, x in enumerate(tweets) if neu_classes[i] == 1]
+    neutral = list(sorted(tweets, key=lambda x:max(x["scores"]["democrats"], x["scores"]["republicans"])))
+
+    #print("#### DEMS ######")
+    #print(classifier.predict(dems))
+    #print("#### REPS ######")
+    #print(classifier.predict(reps))
+    #print("#### NEUTRAL ######")
+    #print(classifier.predict(neutral))
     return (dems[:10], reps[:10], neutral[:10])
+
+
+def insert_usernames(api, ls):
+    for i in range(len(ls)):
+        u = api.get_user(ls[i]["tweet"]["user_id"])
+        ls[i]["username"] = u.screen_name
+    return ls
 
 # Create your views here.
 def index(request):
@@ -134,6 +161,18 @@ def index(request):
         reps = word_color(reps, "republicans")
         neutral = word_color(neutral, "neutral")
 
+        auth = tweepy.OAuthHandler("BDzpFtaKFVwFiM5Xj0uSgu0hF",
+                                   "M8WoPc1DUfXaAyUOGSFSP4G87LDNe192QY7G" +
+                                   "Mbie8lpPqPxwK6")
+        auth.set_access_token("717950588076601344-k7gPVk" +
+                              "dbDSP0aktBF1tNSIFnpsu5XI3",
+                              "R2Fc8zG3U0DwpDnX5MqftlVbmRzQK5HSlIrII29U8wMFM")
+        api = tweepy.API(auth)
+        
+        dems = insert_usernames(api, dems)
+        reps = insert_usernames(api, reps)
+        neutral = insert_usernames(api, neutral)
+        
         page = request.GET.get('page')
     return render_to_response('project_template/index.html',
                           {'dems': dems,

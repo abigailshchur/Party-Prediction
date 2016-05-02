@@ -50,7 +50,7 @@
 	      <span class="h1">#{{search}}</span>
 	    </div>
           {% endif %}
-	  {% if search %}
+	  {% if dems %}
 	  <div class="row">
 	    <div class="col-md-4 dems"><span class="h3">Most Democratic</span>
 	    </div>
@@ -63,6 +63,7 @@
 	    <div class="col-md-4 demresults">
 	      {% for line in dems %}
 	      <div class="row tweet">
+		<a href="https://twitter.com/{{line.username}}">{{line.username}}</a>:<br>
 		{% for word in line.words %}
 		{% if word.highlighted %}
 		    <span class="word-highlight" style="background:{{word.color}}; color:{{word.text_color}}">{{word.text}}</span> 
@@ -77,7 +78,8 @@
 	    </div>
 	    <div class="col-md-4 neutralresults">
 	      {% for line in neutral %}
-	      <div class="row tweet ">
+	      <div class="row tweet">
+		<a href="https://twitter.com/{{line.username}}">{{line.username}}</a>:<br>
 		{% for word in line.words %}
 		  {% if word.highlighted %}
 		    <span class="word-highlight" style="background:{{word.color}}; color:{{word.text_color}}">{{word.text}}</span> 
@@ -94,7 +96,8 @@
 	    </div>
 	    <div class="col-md-4 represults">
 	      {% for line in reps %}
-	      <div class="row tweet ">
+	      <div class="row tweet">
+		<a href="https://twitter.com/{{line.username}}">{{line.username}}</a>:<br>
 		{% for word in line.words %}
 		  {% if word.highlighted %}
 		    <span class="word-highlight" style="background:{{word.color}}; color:{{word.text_color}}">{{word.text}}</span> 
