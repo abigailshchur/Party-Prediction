@@ -148,8 +148,8 @@ def insert_usernames(api, ls):
         if user_id in username_cache:
             ls[i]["username"] = username_cache[user_id]
         else:
-            u = api.get_user(user_id)
             try:
+                u = api.get_user(user_id)
                 ls[i]["username"] = u.screen_name
                 username_cache[user_id] = u.screen_name
             except:
