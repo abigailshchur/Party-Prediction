@@ -149,8 +149,11 @@ def insert_usernames(api, ls):
             ls[i]["username"] = username_cache[user_id]
         else:
             u = api.get_user(user_id)
-            ls[i]["username"] = u.screen_name
-            username_cache[user_id] = u.screen_name
+            try:
+                ls[i]["username"] = u.screen_name
+                username_cache[user_id] = u.screen_name
+            except:
+                ls[i]["username"] = ""
     return ls
 
 keys = [["BDzpFtaKFVwFi" + "M5Xj0uSgu0hF", "M8WoPc1DUfXaAyUOGSFSP4G87LDNe192QY7G" + "Mbie8lpPqPxwK6", "717950588076601344-k7gPVk" + "dbDSP0aktBF1tNSIFnpsu5XI3", "R2Fc8zG3U0DwpDnX5MqftlVbmR" + "zQK5HSlIrII29U8wMFM"], ["eNfjPJT12a1aiFGaVSNnn6nTg", "wJk3RhuhUo5MFNnnLaJQIM2Q" + "93gFeMMfWGUzoYd6z49z8Kis2w", "717950588076601344-yDbU6iN" + "96hMagodDyv2iqTxuiNQ7VkS", "OycOAMytzLXlik4qO3" + "2iLWxPoPaqNmoXlDrW6QfhhX7Vd"], ["Qvp9YhLDqwngJcX" + "ixh95xG6U2", "I6ZfZHsAaHbmtGuYfo9Ku8G" + "ngZ86I2X9rQob4e9imHcQjRLd0C", "717950588076601344-kJkuGPJZIT" + "NQnZsFGUpHr9Ru76k60bu", "RHKloyH0d7FjeYUC" + "FJB4m36cXlh8hA6b9QJOFsugGhzTy"]]
