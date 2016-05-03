@@ -14,7 +14,12 @@ try:
     from urlparse import urlsplit
 except ImportError:
     from urllib.parse import urlsplit
+#from nltk.sentiment.vader import SentimentIntensityAnalyzer
+
 from pymongo import MongoClient
+import tweepy
+
+#from project_template import classifier
 
 url = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/cs4300')
 parsed_url = urlsplit(url)
@@ -32,6 +37,8 @@ if '@' in url:
 classifier_tweets = db['unigram_classifier_tweets']
 events = db['unigram_classifier_meta_event']
 event_popularity = db['unigram_classifier_meta_event_popularity']
+
+#print(urllib.request.urlopen("http://www.sentiment140.com/api/classify?text=new+moon+is+awesome&query=new+moon").read())
 
 def get_event_hint(query, n):
     return list(event_popularity.find({"event": re.compile(query, re.IGNORECASE)}, {'event':1, '_id':0}).sort('avg', -1).limit(n))
@@ -66,7 +73,7 @@ def get_top_events(n):
         red = int(float(num_reps) / total * 255)
         blue = int(float(num_dems) / total * 255)
         item["color"] = "rgb(" + str(red) + ",0," + str(blue) + ")"
-    print items[0]
+    print(items[0])
     return items
 
 def word_color(x, side_or_neutral):
@@ -110,16 +117,51 @@ def distinct(l, key):
             s.add(key(x))
     return r
 
+#def mostly_neu(d):
+#    return d["neu"] > d["pos"] and d["neu"] > d["neg"]
+
 def get_to_tweets(event):
+    #sid = SentimentIntensityAnalyzer()
+
     tweets = list(classifier_tweets.find({'event': event}))
     tweets = distinct(tweets, lambda x: x['tweet']['text'])
-    dems = sorted(tweets, key=lambda x: x["scores"]["democrats"],   reverse=True)
-    reps = sorted(tweets, key=lambda x: x["scores"]["republicans"], reverse=True)
-    neutral = sorted(tweets, key=lambda x:max(x["scores"]["democrats"], x["scores"]["republicans"]))
+    dems = list(sorted(tweets, key=lambda x: x["scores"]["democrats"],   reverse=True))
+    reps = list(sorted(tweets, key=lambda x: x["scores"]["republicans"], reverse=True))
+
+    #neu_classes = classifier.predict(tweets)
+    #neutral = [x for i, x in enumerate(tweets) if neu_classes[i] == 1]
+    neutral = list(sorted(tweets, key=lambda x:max(x["scores"]["democrats"], x["scores"]["republicans"])))
+
+    #print("#### DEMS ######")
+    #print(classifier.predict(dems))
+    #print("#### REPS ######")
+    #print(classifier.predict(reps))
+    #print("#### NEUTRAL ######")
+    #print(classifier.predict(neutral))
     return (dems[:10], reps[:10], neutral[:10])
+
+username_cache = {}
+
+def insert_usernames(api, ls):
+    for i in range(len(ls)):
+        user_id = ls[i]["tweet"]["user_id"]
+        if user_id in username_cache:
+            ls[i]["username"] = username_cache[user_id]
+        else:
+            try:
+                u = api.get_user(user_id)
+                ls[i]["username"] = u.screen_name
+                username_cache[user_id] = u.screen_name
+            except:
+                ls[i]["username"] = ""
+    return ls
+
+keys = [["BDzpFtaKFVwFi" + "M5Xj0uSgu0hF", "M8WoPc1DUfXaAyUOGSFSP4G87LDNe192QY7G" + "Mbie8lpPqPxwK6", "717950588076601344-k7gPVk" + "dbDSP0aktBF1tNSIFnpsu5XI3", "R2Fc8zG3U0DwpDnX5MqftlVbmR" + "zQK5HSlIrII29U8wMFM"], ["eNfjPJT12a1aiFGaVSNnn6nTg", "wJk3RhuhUo5MFNnnLaJQIM2Q" + "93gFeMMfWGUzoYd6z49z8Kis2w", "717950588076601344-yDbU6iN" + "96hMagodDyv2iqTxuiNQ7VkS", "OycOAMytzLXlik4qO3" + "2iLWxPoPaqNmoXlDrW6QfhhX7Vd"], ["Qvp9YhLDqwngJcX" + "ixh95xG6U2", "I6ZfZHsAaHbmtGuYfo9Ku8G" + "ngZ86I2X9rQob4e9imHcQjRLd0C", "717950588076601344-kJkuGPJZIT" + "NQnZsFGUpHr9Ru76k60bu", "RHKloyH0d7FjeYUC" + "FJB4m36cXlh8hA6b9QJOFsugGhzTy"]]
+cur_key = 0
 
 # Create your views here.
 def index(request):
+    global cur_key
     dems = ""
     reps = ""
     neutral = ""
@@ -132,6 +174,17 @@ def index(request):
         reps = word_color(reps, "republicans")
         neutral = word_color(neutral, "neutral")
 
+        auth = tweepy.OAuthHandler(keys[cur_key][0], keys[cur_key][1])
+        auth.set_access_token(keys[cur_key][2], keys[cur_key][3])
+        api = tweepy.API(auth)
+        cur_key += 1
+        if cur_key >= len(keys):
+            cur_key = 0
+        
+        dems = insert_usernames(api, dems)
+        reps = insert_usernames(api, reps)
+        neutral = insert_usernames(api, neutral)
+        
         page = request.GET.get('page')
     return render_to_response('project_template/index.html',
                           {'dems': dems,

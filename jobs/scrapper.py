@@ -66,6 +66,7 @@ class Unigram_Classifier_DB:
         self.classifier_meta_event_cache_count = {}
         self.classifier_meta_term_cache_count = {}
         self.affiliations = affiliations
+        #tweets_dict = {}
         self.setup_index()
 
     def setup_index(self):
@@ -80,6 +81,7 @@ class Unigram_Classifier_DB:
         self.classifier_tweets.drop()
         self.classifier_meta_event.drop()
         self.classifier_meta_term.drop()
+        #tweets_dict = {}
 
     def update_event_inc(self, event, user_id, affiliation):
         if event not in self.classifier_meta_event_cache:
@@ -402,6 +404,12 @@ class API_pool():
         return {'tweet_id': tweet.id, 'created_at': tweet.created_at, 'text': tweet.text, 'hashtags': tweet.entities.get('hashtags')}
 
     def parse_tweets(self, tweets, user_id):
+        #tweets2 = []
+        ##for i in tweets:
+        #    if (i.text not in tweets_dict):
+        #        tweets_dict[i.text] = 1
+        #        tweets2.append(i)
+        #tweets = tweets2
         tweets = [self.parse_tweet(t) for t in tweets]
         for tweet in tweets:
             tweet['user_id'] = user_id
