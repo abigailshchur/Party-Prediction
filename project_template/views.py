@@ -89,6 +89,8 @@ def word_color(x, side_or_neutral):
             sides = ["democrats", "republicans"] if side_or_neutral == "neutral" else [side_or_neutral]
             for side in sides:
                 score_detail = dict(line["score_detail"][side])
+                if (word.startswith("#")):
+                    word = word[1:]
                 if word in score_detail:
                     #print(score_detail[word])
                     dic["highlighted"] = True
