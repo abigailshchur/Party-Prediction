@@ -124,7 +124,7 @@ def distinct(l, key):
 
 #def mostly_neu(d):
 #    return d["neu"] > d["pos"] and d["neu"] > d["neg"]
-def calculate_score(self, terms, event):
+def calculate_score(terms, event):
     scores = defaultdict(list)
     event_counts = db.get_event_meta(event)
     if any([c < 50 for c in event_counts.values()]):
@@ -132,7 +132,7 @@ def calculate_score(self, terms, event):
     if len(terms) == 0:
         return None
     for t in terms:
-        term_counts = self.db.get_term_meta(event, t)
+        term_counts = db.get_term_meta(event, t)
         assert len(term_counts) == 2
         for affiliation, term_count in term_counts.items():
             other_term_count = sum([c for a,c in term_counts.items() if a != affiliation])
