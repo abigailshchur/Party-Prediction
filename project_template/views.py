@@ -126,7 +126,7 @@ def distinct(l, key):
 #    return d["neu"] > d["pos"] and d["neu"] > d["neg"]
 def calculate_score(self, terms, event):
     scores = defaultdict(list)
-    event_counts = self.db.get_event_meta(event)
+    event_counts = db.get_event_meta(event)
     if any([c < 50 for c in event_counts.values()]):
         return None
     if len(terms) == 0:
@@ -146,7 +146,7 @@ def calculate_score(self, terms, event):
 def get_to_tweets(event):
 	#sid = SentimentIntensityAnalyzer()
 	new_tweets = get_tweets_for_a_hashtag(event, num_tweets = 100, views = ['text', 'author'])
-	calculate_score(new_tweets[0]['text']lower().split(), event)
+	calculate_score("test test", event)
 	tweets = list(classifier_tweets.find({'event': event}))
 	tweets = distinct(tweets, lambda x: x['tweet']['text'])
 	dems = list(sorted(tweets, key=lambda x: x["scores"]["democrats"],   reverse=True))
