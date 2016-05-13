@@ -38,6 +38,7 @@ if '@' in url:
 classifier_tweets = db['unigram_classifier_tweets']
 events = db['unigram_classifier_meta_event']
 event_popularity = db['unigram_classifier_meta_event_popularity']
+classifier_terms = db['unigram_classifier_meta_term']
 
 #print(urllib.request.urlopen("http://www.sentiment140.com/api/classify?text=new+moon+is+awesome&query=new+moon").read())
 
@@ -126,36 +127,10 @@ def distinct(l, key):
 #def mostly_neu(d):
 #    return d["neu"] > d["pos"] and d["neu"] > d["neg"]
 
-def get_event_meta(event):
-    data = {c['affiliation']:set(c['user_ids']) for c in events.find({'event': event})}
-    for affiliation in ['democrats', 'republicans']:
-        if affiliation not in data:
-            data[affiliation] = set()
-    return {affiliation:len(user_ids) for affiliation, user_ids in data.items()}
-
-def calculate_score(terms, event):
-    scores = defaultdict(list)
-    event_counts = get_event_meta(event)
-    if any([c < 50 for c in event_counts.values()]):
-        return None
-    if len(terms) == 0:
-        return None
-    for t in terms:
-        term_counts = db.get_term_meta(event, t)
-        assert len(term_counts) == 2
-        for affiliation, term_count in term_counts.items():
-            other_term_count = sum([c for a,c in term_counts.items() if a != affiliation])
-            other_event_count = sum([c for a,c in event_counts.items() if a != affiliation])
-            other_portion = (float(other_term_count)+1)/(other_event_count+1)
-            this_portion = (float(term_count)+1)/(event_counts[affiliation]+1)
-            new_score = this_portion * math.log(this_portion / other_portion)
-            scores[affiliation].append(new_score)
-    return {k:max(v) for k,v in scores.items()}, {k:list(zip(terms, v)) for k,v in scores.items()}
-
 def get_to_tweets(event):
 	#sid = SentimentIntensityAnalyzer()
 	new_tweets = get_tweets_for_a_hashtag(event, num_tweets = 100, views = ['text', 'author'])
-	calculate_score("test test", event)
+	#calculate_score("test test", event)
 	tweets = list(classifier_tweets.find({'event': event}))
 	tweets = distinct(tweets, lambda x: x['tweet']['text'])
 	dems = list(sorted(tweets, key=lambda x: x["scores"]["democrats"],   reverse=True))
