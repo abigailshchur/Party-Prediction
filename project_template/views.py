@@ -124,10 +124,29 @@ def distinct(l, key):
 
 #def mostly_neu(d):
 #    return d["neu"] > d["pos"] and d["neu"] > d["neg"]
+def calculate_score(self, terms, event):
+    scores = defaultdict(list)
+    event_counts = self.db.get_event_meta(event)
+    if any([c < 50 for c in event_counts.values()]):
+        return None
+    if len(terms) == 0:
+        return None
+    for t in terms:
+        term_counts = self.db.get_term_meta(event, t)
+        assert len(term_counts) == 2
+        for affiliation, term_count in term_counts.items():
+            other_term_count = sum([c for a,c in term_counts.items() if a != affiliation])
+            other_event_count = sum([c for a,c in event_counts.items() if a != affiliation])
+            other_portion = (float(other_term_count)+1)/(other_event_count+1)
+            this_portion = (float(term_count)+1)/(event_counts[affiliation]+1)
+            new_score = this_portion * math.log(this_portion / other_portion)
+            scores[affiliation].append(new_score)
+    return {k:max(v) for k,v in scores.items()}, {k:list(zip(terms, v)) for k,v in scores.items()}
 
 def get_to_tweets(event):
 	#sid = SentimentIntensityAnalyzer()
-	get_tweets_for_a_hashtag(event, num_tweets = 100, views = ['text', 'author'])
+	new_tweets = get_tweets_for_a_hashtag(event, num_tweets = 100, views = ['text', 'author'])
+	calculate_score(new_tweets[0]['text']lower().split(), event)
 	tweets = list(classifier_tweets.find({'event': event}))
 	tweets = distinct(tweets, lambda x: x['tweet']['text'])
 	dems = list(sorted(tweets, key=lambda x: x["scores"]["democrats"],   reverse=True))
