@@ -201,6 +201,7 @@ def index(request):
 						   })
 
 def get_tweets_for_a_hashtag(hashtag, num_tweets = 10, views = ['text']):
+	global cur_key
 	auth = tweepy.OAuthHandler(keys[cur_key][0], keys[cur_key][1])
 	auth.set_access_token(keys[cur_key][2], keys[cur_key][3])
 	api = tweepy.API(auth)
