@@ -11,9 +11,9 @@ import re
 import os
 from django.http import JsonResponse
 try:
-    from urlparse import urlsplit
+	from urlparse import urlsplit
 except ImportError:
-    from urllib.parse import urlsplit
+	from urllib.parse import urlsplit
 #from nltk.sentiment.vader import SentimentIntensityAnalyzer
 
 from pymongo import MongoClient
@@ -30,9 +30,9 @@ client = MongoClient(url)
 db = client[db_name]
 
 if '@' in url:
-    user, password = parsed_url.netloc.split('@')[0].split(':')
-    db.authenticate(user, password)
-    print(user, password)
+	user, password = parsed_url.netloc.split('@')[0].split(':')
+	db.authenticate(user, password)
+	print(user, password)
 
 classifier_tweets = db['unigram_classifier_tweets']
 events = db['unigram_classifier_meta_event']
@@ -41,161 +41,181 @@ event_popularity = db['unigram_classifier_meta_event_popularity']
 #print(urllib.request.urlopen("http://www.sentiment140.com/api/classify?text=new+moon+is+awesome&query=new+moon").read())
 
 def get_event_hint(query, n):
-    return list(event_popularity.find({"event": re.compile(query, re.IGNORECASE)}, {'event':1, '_id':0}).sort('avg', -1).limit(n))
+	return list(event_popularity.find({"event": re.compile(query, re.IGNORECASE)}, {'event':1, '_id':0}).sort('avg', -1).limit(n))
 
 def format_suggestion(query, l):
-    r = {};
-    r['query'] = query;
-    r['suggestions'] = [{'value':x['event'], 'data':x['event']} for x in l]
-    return r;
+	r = {};
+	r['query'] = query;
+	r['suggestions'] = [{'value':x['event'], 'data':x['event']} for x in l]
+	return r;
 
 def search_hint(request):
-    #url example /pt/search_hint?query=[...]
-    n = 10
-    if request.GET.get('query'):
-        query = request.GET.get('query')
-        return JsonResponse(format_suggestion(query, get_event_hint(query, n)), safe=False)
-    else:
-        return JsonResponse(format_suggestion('', get_top_events(n)), safe=False)
+	#url example /pt/search_hint?query=[...]
+	n = 10
+	if request.GET.get('query'):
+		query = request.GET.get('query')
+		return JsonResponse(format_suggestion(query, get_event_hint(query, n)), safe=False)
+	else:
+		return JsonResponse(format_suggestion('', get_top_events(n)), safe=False)
 
 def get_top_events(n):
-    #sample result [{"republicans" : 875, "avg" : 674, "democrats" : 473, "event" : "gop" }]
-    items = list(event_popularity.find({}).sort('avg', -1).limit(n))
-    for item in items:
-        item['popularity'] = item['avg']
-        if 'democrats' not in item:
-            item['democrats'] = 0
-        if 'republicans' not in item:
-            item['republicans'] = 0
-        num_dems = item['democrats']
-        num_reps = item['republicans']
-        total = num_dems + num_reps
-        red = int(float(num_reps) / total * 255)
-        blue = int(float(num_dems) / total * 255)
-        item["color"] = "rgb(" + str(red) + ",0," + str(blue) + ")"
-    print(items[0])
-    return items
+	#sample result [{"republicans" : 875, "avg" : 674, "democrats" : 473, "event" : "gop" }]
+	items = list(event_popularity.find({}).sort('avg', -1).limit(n))
+	for item in items:
+		item['popularity'] = item['avg']
+		if 'democrats' not in item:
+			item['democrats'] = 0
+		if 'republicans' not in item:
+			item['republicans'] = 0
+		num_dems = item['democrats']
+		num_reps = item['republicans']
+		total = num_dems + num_reps
+		red = int(float(num_reps) / total * 255)
+		blue = int(float(num_dems) / total * 255)
+		item["color"] = "rgb(" + str(red) + ",0," + str(blue) + ")"
+	print(items[0])
+	return items
 
 def word_color(x, side_or_neutral):
-    for i in range(len(x)):
-        line = x[i]
-        words = line["tweet"]["text"].split()
-        x[i]["words"] = []
-        for word in words:
-            dic = {}
-            dic["text"] = word.replace("&amp;", "&")
-            red_alpha = 0
-            blue_alpha = 0
-            sides = ["democrats", "republicans"] if side_or_neutral == "neutral" else [side_or_neutral]
-            for side in sides:
-                score_detail = dict(line["score_detail"][side])
-                if (word.startswith("#")):
-                    word = word[1:]
-                if word in score_detail:
-                    #print(score_detail[word])
-                    dic["highlighted"] = True
-                    if (score_detail[word] > 0 and side == "democrats") or (score_detail[word] < 0 and side == "republicans"):
-                        blue_alpha = pow(abs(score_detail[word]), 0.3)
-                        #dic["color"] = "rgba(0, 0, 255, " +  + ")"
-                    else:
-                        red_alpha = pow(abs(score_detail[word]), 0.3)
-                        #dic["color"] = "rgba(255, 0, 0, " +  + ")"
-                else:
-                    dic["highlighted"] = False
-            red = int(255 * red_alpha)
-            blue = int(255 * blue_alpha)
-            alpha = red_alpha + blue_alpha*(1-red_alpha)
-            dic["text_color"] = "#000" if alpha < 0.5 else "#ccc"
-            dic["color"] = "rgba(" + str(red) + ",0," + str(blue) + "," + str(alpha) + ")"
-            x[i]["words"].append(dic)
-    return x
+	for i in range(len(x)):
+		line = x[i]
+		words = line["tweet"]["text"].split()
+		x[i]["words"] = []
+		for word in words:
+			dic = {}
+			dic["text"] = word.replace("&amp;", "&")
+			red_alpha = 0
+			blue_alpha = 0
+			sides = ["democrats", "republicans"] if side_or_neutral == "neutral" else [side_or_neutral]
+			for side in sides:
+				score_detail = dict(line["score_detail"][side])
+				if (word.startswith("#")):
+					word = word[1:]
+				if word in score_detail:
+					#print(score_detail[word])
+					dic["highlighted"] = True
+					if (score_detail[word] > 0 and side == "democrats") or (score_detail[word] < 0 and side == "republicans"):
+						blue_alpha = pow(abs(score_detail[word]), 0.3)
+						#dic["color"] = "rgba(0, 0, 255, " +  + ")"
+					else:
+						red_alpha = pow(abs(score_detail[word]), 0.3)
+						#dic["color"] = "rgba(255, 0, 0, " +  + ")"
+				else:
+					dic["highlighted"] = False
+			red = int(255 * red_alpha)
+			blue = int(255 * blue_alpha)
+			alpha = red_alpha + blue_alpha*(1-red_alpha)
+			dic["text_color"] = "#000" if alpha < 0.5 else "#ccc"
+			dic["color"] = "rgba(" + str(red) + ",0," + str(blue) + "," + str(alpha) + ")"
+			x[i]["words"].append(dic)
+	return x
 
 def distinct(l, key):
-    s = set()
-    r = []
-    for x in l:
-        text = key(x).lower().strip()
-        nonhashlen = len(text.split())-len([i[1:] for i in text.split() if i.startswith("#")])
-        textlen = len([i[1:] for i in text.split()])
-        if text not in s and nonhashlen > 1 and textlen > 5:
-            r.append(x)
-            s.add(text)
-    return r
+	s = set()
+	r = []
+	for x in l:
+		text = key(x).lower().strip()
+		nonhashlen = len(text.split())-len([i[1:] for i in text.split() if i.startswith("#")])
+		textlen = len([i[1:] for i in text.split()])
+		if text not in s and nonhashlen > 1 and textlen > 5:
+			r.append(x)
+			s.add(text)
+	return r
 
 #def mostly_neu(d):
 #    return d["neu"] > d["pos"] and d["neu"] > d["neg"]
 
 def get_to_tweets(event):
-    #sid = SentimentIntensityAnalyzer()
+	#sid = SentimentIntensityAnalyzer()
 
-    tweets = list(classifier_tweets.find({'event': event}))
-    tweets = distinct(tweets, lambda x: x['tweet']['text'])
-    dems = list(sorted(tweets, key=lambda x: x["scores"]["democrats"],   reverse=True))
-    reps = list(sorted(tweets, key=lambda x: x["scores"]["republicans"], reverse=True))
+	tweets = list(classifier_tweets.find({'event': event}))
+	tweets = distinct(tweets, lambda x: x['tweet']['text'])
+	dems = list(sorted(tweets, key=lambda x: x["scores"]["democrats"],   reverse=True))
+	reps = list(sorted(tweets, key=lambda x: x["scores"]["republicans"], reverse=True))
 
-    #neu_classes = classifier.predict(tweets)
-    #neutral = [x for i, x in enumerate(tweets) if neu_classes[i] == 1]
-    neutral = list(sorted(tweets, key=lambda x:max(x["scores"]["democrats"], x["scores"]["republicans"])))
+	#neu_classes = classifier.predict(tweets)
+	#neutral = [x for i, x in enumerate(tweets) if neu_classes[i] == 1]
+	neutral = list(sorted(tweets, key=lambda x:max(x["scores"]["democrats"], x["scores"]["republicans"])))
 
-    #print("#### DEMS ######")
-    #print(classifier.predict(dems))
-    #print("#### REPS ######")
-    #print(classifier.predict(reps))
-    #print("#### NEUTRAL ######")
-    #print(classifier.predict(neutral))
-    return (dems[:10], reps[:10], neutral[:10])
+	#print("#### DEMS ######")
+	#print(classifier.predict(dems))
+	#print("#### REPS ######")
+	#print(classifier.predict(reps))
+	#print("#### NEUTRAL ######")
+	#print(classifier.predict(neutral))
+	return (dems[:10], reps[:10], neutral[:10])
 
 username_cache = {}
 
 def insert_usernames(api, ls):
-    for i in range(len(ls)):
-        user_id = ls[i]["tweet"]["user_id"]
-        if user_id in username_cache:
-            ls[i]["username"] = username_cache[user_id]
-        else:
-            try:
-                u = api.get_user(user_id)
-                ls[i]["username"] = u.screen_name
-                username_cache[user_id] = u.screen_name
-            except:
-                ls[i]["username"] = ""
-    return ls
+	for i in range(len(ls)):
+		user_id = ls[i]["tweet"]["user_id"]
+		if user_id in username_cache:
+			ls[i]["username"] = username_cache[user_id]
+		else:
+			try:
+				u = api.get_user(user_id)
+				ls[i]["username"] = u.screen_name
+				username_cache[user_id] = u.screen_name
+			except:
+				ls[i]["username"] = ""
+	return ls
 
 keys = [["BDzpFtaKFVwFi" + "M5Xj0uSgu0hF", "M8WoPc1DUfXaAyUOGSFSP4G87LDNe192QY7G" + "Mbie8lpPqPxwK6", "717950588076601344-k7gPVk" + "dbDSP0aktBF1tNSIFnpsu5XI3", "R2Fc8zG3U0DwpDnX5MqftlVbmR" + "zQK5HSlIrII29U8wMFM"], ["eNfjPJT12a1aiFGaVSNnn6nTg", "wJk3RhuhUo5MFNnnLaJQIM2Q" + "93gFeMMfWGUzoYd6z49z8Kis2w", "717950588076601344-yDbU6iN" + "96hMagodDyv2iqTxuiNQ7VkS", "OycOAMytzLXlik4qO3" + "2iLWxPoPaqNmoXlDrW6QfhhX7Vd"], ["Qvp9YhLDqwngJcX" + "ixh95xG6U2", "I6ZfZHsAaHbmtGuYfo9Ku8G" + "ngZ86I2X9rQob4e9imHcQjRLd0C", "717950588076601344-kJkuGPJZIT" + "NQnZsFGUpHr9Ru76k60bu", "RHKloyH0d7FjeYUC" + "FJB4m36cXlh8hA6b9QJOFsugGhzTy"]]
 cur_key = 0
 
 # Create your views here.
 def index(request):
-    global cur_key
-    dems = ""
-    reps = ""
-    neutral = ""
-    search = ""
-    if request.GET.get('search'):
-        search = request.GET.get('search')
-        dems, reps, neutral = get_to_tweets(search)
+	global cur_key
+	dems = ""
+	reps = ""
+	neutral = ""
+	search = ""
+	if request.GET.get('search'):
+		search = request.GET.get('search')
+		dems, reps, neutral = get_to_tweets(search)
 
-        dems = word_color(dems, "democrats")
-        reps = word_color(reps, "republicans")
-        neutral = word_color(neutral, "neutral")
+		dems = word_color(dems, "democrats")
+		reps = word_color(reps, "republicans")
+		neutral = word_color(neutral, "neutral")
 
-        auth = tweepy.OAuthHandler(keys[cur_key][0], keys[cur_key][1])
-        auth.set_access_token(keys[cur_key][2], keys[cur_key][3])
-        api = tweepy.API(auth)
-        cur_key += 1
-        if cur_key >= len(keys):
-            cur_key = 0
-        
-        dems = insert_usernames(api, dems)
-        reps = insert_usernames(api, reps)
-        neutral = insert_usernames(api, neutral)
-        
-        page = request.GET.get('page')
-    return render_to_response('project_template/index.html',
-                          {'dems': dems,
-                           'reps': reps,
-                           'neutral': neutral,
-                           'search': search,
-                           'top_events': get_top_events(30),
-                           'magic_url': request.get_full_path(),
-                           })
+		auth = tweepy.OAuthHandler(keys[cur_key][0], keys[cur_key][1])
+		auth.set_access_token(keys[cur_key][2], keys[cur_key][3])
+		api = tweepy.API(auth)
+		cur_key += 1
+		if cur_key >= len(keys):
+			cur_key = 0
+		
+		dems = insert_usernames(api, dems)
+		reps = insert_usernames(api, reps)
+		neutral = insert_usernames(api, neutral)
+		
+		page = request.GET.get('page')
+	return render_to_response('project_template/index.html',
+						  {'dems': dems,
+						   'reps': reps,
+						   'neutral': neutral,
+						   'search': search,
+						   'top_events': get_top_events(30),
+						   'magic_url': request.get_full_path(),
+						   })
+
+def get_tweets_for_a_hashtag(hashtag, num_tweets = 10, views = ['text']):
+	auth = tweepy.OAuthHandler(keys[cur_key][0], keys[cur_key][1])
+	auth.set_access_token(keys[cur_key][2], keys[cur_key][3])
+	api = tweepy.API(auth)
+	cur_key += 1
+	if cur_key >= len(keys):
+		cur_key = 0
+	qr = tweepy.Cursor(api.search, q=hashtag).items(num_tweets)
+	out_list = []
+	for twit in qr:
+		twit_dickt = twit.__dict__
+		out_dickt = {}
+		for view in views:
+			try:
+				out_dickt[view] = twit_dickt[view]
+			except Exception, e:
+				raise e
+		out_list.append(out_dickt)
+	return out_list
