@@ -135,7 +135,7 @@ def get_event_meta(event):
 
 def calculate_score(terms, event):
     scores = defaultdict(list)
-    event_counts = db.get_event_meta(event)
+    event_counts = get_event_meta(event)
     if any([c < 50 for c in event_counts.values()]):
         return None
     if len(terms) == 0:
