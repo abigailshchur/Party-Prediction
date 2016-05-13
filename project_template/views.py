@@ -127,7 +127,7 @@ def distinct(l, key):
 
 def get_to_tweets(event):
 	#sid = SentimentIntensityAnalyzer()
-
+	get_tweets_for_a_hashtag(event, num_tweets = 100, views = ['text', 'author'])
 	tweets = list(classifier_tweets.find({'event': event}))
 	tweets = distinct(tweets, lambda x: x['tweet']['text'])
 	dems = list(sorted(tweets, key=lambda x: x["scores"]["democrats"],   reverse=True))
