@@ -9,6 +9,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 import re
 import os
+from collections import defaultdict
 from django.http import JsonResponse
 try:
 	from urlparse import urlsplit
