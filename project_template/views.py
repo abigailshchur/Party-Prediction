@@ -125,6 +125,14 @@ def distinct(l, key):
 
 #def mostly_neu(d):
 #    return d["neu"] > d["pos"] and d["neu"] > d["neg"]
+
+def get_event_meta(event):
+    data = {c['affiliation']:set(c['user_ids']) for c in events.find({'event': event})}
+    for affiliation in ['democrats', 'republicans']:
+        if affiliation not in data:
+            data[affiliation] = set()
+    return {affiliation:len(user_ids) for affiliation, user_ids in data.items()}
+
 def calculate_score(terms, event):
     scores = defaultdict(list)
     event_counts = db.get_event_meta(event)
