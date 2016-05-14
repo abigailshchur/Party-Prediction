@@ -20,6 +20,11 @@ except ImportError:
 from pymongo import MongoClient
 import tweepy
 
+import sys
+sys.path.insert(0, '../jobs')
+
+import scrapper
+
 #from project_template import classifier
 
 url = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/cs4300')
@@ -130,6 +135,7 @@ def distinct(l, key):
 def get_to_tweets(event):
 	#sid = SentimentIntensityAnalyzer()
 	new_tweets = get_tweets_for_a_hashtag(event, num_tweets = 100, views = ['text', 'author'])
+	t = scrapper.classifier
 	#calculate_score("test test", event)
 	tweets = list(classifier_tweets.find({'event': event}))
 	tweets = distinct(tweets, lambda x: x['tweet']['text'])
