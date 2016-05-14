@@ -21,8 +21,8 @@ from pymongo import MongoClient
 import tweepy
 
 import sys
-sys.path.insert(0, '../jobs')
-
+# sys.path.insert(0, '../jobs')
+sys.path.append('../jobs/')
 import scrapper
 
 #from project_template import classifier
