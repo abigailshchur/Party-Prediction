@@ -23,7 +23,7 @@ import tweepy
 import sys
 # sys.path.insert(0, '../jobs')
 # sys.path.append('../jobs/')
-job_dir = os.path.dirname(os.path.abspath(__file__)) + '/../jobs'
+job_dir = os.path.join(os.path.dirname(__file__), os.pardir, 'jobs')
 sys.path.append(job_dir)
 import scrapper
 
