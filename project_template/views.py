@@ -137,7 +137,7 @@ def distinct(l, key):
 def get_to_tweets(event):
 	#sid = SentimentIntensityAnalyzer()
 	new_tweets = get_tweets_for_a_hashtag(event, num_tweets = 100, views = ['text', 'author'])
-	t = scrapper.classifier
+	#t = scrapper.classifier
 	#calculate_score("test test", event)
 	tweets = list(classifier_tweets.find({'event': event}))
 	tweets = distinct(tweets, lambda x: x['tweet']['text'])
