@@ -22,7 +22,9 @@ import tweepy
 
 import sys
 # sys.path.insert(0, '../jobs')
-sys.path.append('../jobs/')
+# sys.path.append('../jobs/')
+job_dir = os.path.dirname(os.path.abspath(__file__)) + '/../jobs'
+sys.path.append(job_dir)
 import scrapper
 
 #from project_template import classifier
