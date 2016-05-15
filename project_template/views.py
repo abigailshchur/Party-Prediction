@@ -46,9 +46,8 @@ classifier_tweets = db['unigram_classifier_tweets']
 events = db['unigram_classifier_meta_event']
 event_popularity = db['unigram_classifier_meta_event_popularity']
 classifier_terms = db['unigram_classifier_meta_term']
-unigram_scores = db['unigram_scores']
-#event_scores = db['event_scores']
-#unigram_scores = db['unigram_scores']
+uc_term_counts = db['unigram_classifier_meta_term_count']
+uc_event_counts = db['unigram_classifier_meta_event_count']
 
 #print(urllib.request.urlopen("http://www.sentiment140.com/api/classify?text=new+moon+is+awesome&query=new+moon").read())
 
@@ -136,12 +135,25 @@ def distinct(l, key):
 
 #def mostly_neu(d):
 #    return d["neu"] > d["pos"] and d["neu"] > d["neg"]
+def unigram_score(event, affiliation, term):
+    #event_counts = self.get_event_meta(event)
+    event_counts = uc_event_counts.find_one('event': event)
+    #term_counts = self.get_term_meta(event, term)
+    term_counts = uc_term_counts.find_one('event': event, 'term': term)
+    #assert len(term_counts) == 2
+    term_count = term_counts[affiliation]
+    other_term_count = sum([c for a,c in term_counts.items() if a != affiliation])
+    other_event_count = sum([c for a,c in event_counts.items() if a != affiliation])
+    other_portion = (float(other_term_count)+1)/(other_event_count+1)
+    this_portion = (float(term_count)+1)/(event_counts[affiliation]+1)
+    mp_score = this_portion * math.log(this_portion / other_portion)
+    return mp_score
 
 def calculate_score(terms, event):
     scores = defaultdict(list)
     for t in terms:
         for affiliation in ["democrats", "republicans"]:
-            uni = unigram_scores.find_one({"event": event, "affiliation": affiliation, "term": t})
+            uni = unigram_score(event, affiliation, t)
             new_score = uni["score"] if uni else 0
             scores[affiliation].append(new_score)
     return {k:max(v) for k,v in scores.items()}, {k:list(zip(terms, v)) for k,v in scores.items()}
