@@ -143,6 +143,8 @@ def unigram_score(event, affiliation, term):
     #assert len(term_counts) == 2
     if term_counts is None:
     	return None
+    event_counts = event_counts['count']
+    term_counts = term_counts['count']
     term_count = term_counts[affiliation]
     other_term_count = sum([c for a,c in term_counts.items() if a != affiliation])
     other_event_count = sum([c for a,c in event_counts.items() if a != affiliation])
