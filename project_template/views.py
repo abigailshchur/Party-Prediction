@@ -46,6 +46,8 @@ classifier_tweets = db['unigram_classifier_tweets']
 events = db['unigram_classifier_meta_event']
 event_popularity = db['unigram_classifier_meta_event_popularity']
 classifier_terms = db['unigram_classifier_meta_term']
+#event_scores = db['event_scores']
+#unigram_scores = db['unigram_scores']
 
 #print(urllib.request.urlopen("http://www.sentiment140.com/api/classify?text=new+moon+is+awesome&query=new+moon").read())
 
@@ -134,12 +136,33 @@ def distinct(l, key):
 #def mostly_neu(d):
 #    return d["neu"] > d["pos"] and d["neu"] > d["neg"]
 
+
+## Return democrat score and republican score tuple ##
+def score_tweet(tweet):
+    tweet_dict = {}
+    
+    ## Use this for classification ##
+    word_array = re.sub("(@[A-Za-z0-9]+)|([^0-9A-Za-z \t])|(\w+:\/\/\S+)"," ",tweet['text'].lower()).split()
+    
+    ## Rest is formatting ##
+    tweet_dict['tweet']={'text': tweet['text'], 'user_id': tweet['id']}
+    tweet_dict['scores'] = {'democrats':5, 'republicans':5}
+    tweet_dict['score_detail'] = {'democrats': [], 'republicans': []}
+    for i in word_array:
+        tweet_dict['score_detail']['democrats'].append([i, 2])
+        tweet_dict['score_detail']['republicans'].append([i, 2])
+    return tweet_dict
+
+
 def get_to_tweets(event):
 	#sid = SentimentIntensityAnalyzer()
-	new_tweets = get_tweets_for_a_hashtag(event, num_tweets = 100, views = ['text', 'author'])
+	new_tweets = get_tweets_for_a_hashtag(event, num_tweets = 100, views = ['text', 'id'])
+	tweets = []
+	for i in new_tweets:
+		tweets.append(score_tweet(i))
 	#t = scrapper.classifier
 	#calculate_score("test test", event)
-	tweets = list(classifier_tweets.find({'event': event}))
+	#tweets = list(classifier_tweets.find({'event': event}))
 	tweets = distinct(tweets, lambda x: x['tweet']['text'])
 	dems = list(sorted(tweets, key=lambda x: x["scores"]["democrats"],   reverse=True))
 	reps = list(sorted(tweets, key=lambda x: x["scores"]["republicans"], reverse=True))
