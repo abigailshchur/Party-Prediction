@@ -62,7 +62,7 @@ class Unigram_Classifier_DB:
         self.classifier_tweets = self.db['unigram_classifier_tweets']
         self.classifier_meta_event = self.db['unigram_classifier_meta_event']
         self.classifier_meta_term = self.db['unigram_classifier_meta_term']
-        self.classifier_scores = self.db['unigram_classifier_term_scores']
+        self.classifier_scores = self.db['unigram_scores']
         self.classifier_tweets_cache = defaultdict(list)
         self.classifier_meta_event_cache = {}
         self.classifier_meta_term_cache = {}
@@ -248,7 +248,7 @@ class Unigram_Classifier_DB:
             for affiliation, user_id_term_pairs in data.items():
                 for user_id, term in user_id_term_pairs:
                     if (event, affiliation, term) not in already_done:
-                        already_done.append((event, affiliation, term))
+                        already_done.add((event, affiliation, term))
                         count = self.get_term_meta(event, term)[affiliation]
                         score = self.unigram_score(event, affiliation, term)
                         if insert:

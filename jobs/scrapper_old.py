@@ -26,9 +26,7 @@ import io
 import base64
 import random
 
-if __name__ == '__main__':
-    os.chdir(os.path.dirname(os.path.realpath(__file__)))
-    
+os.chdir(os.path.dirname(os.path.realpath(__file__)))
 import id_list
 
 stop_words = set([u'all', 'gt', 'go', 'follow', 'issues', 'votes', 'tx', 'tweet', 'obamacare', 'young', u'to', 'program', 'voted', u'under', 'women', 'town', u'very', 'every', u'yourselves', u'did', 'ryan', 'race', 'team', 'small', "i'll", 'says', 'leaders', 'ted', 'sign', 'video', 'pass', u'further', 'even', u'what', 'business', 'find', u'above', 'new', 'ever', 'public', 'dem', 'full', 'iran', 'never', u'here', 'let', 'address', u'hers', 'strong', 'change', 'great', 'potus', '30', 'action', "i'm", 'honor', 'via', 'love', 'campaign', 'win', 'county', 'put', '1st', 'use', u'from', 'usa', 'visit', 'bush', 'next', u'few', 'live', 'call', '6', 'black', u'themselves', u'until', 'today', u'more', 'share', 'must', u'me', 'high', 'join', 'mc', 'rights', u'this', 'work', 'mt', u'can', u'of', 'meet', u'my', 'history', 'give', 'tax', 'states', 'want', 'times', 'needs', 'end', 'breaking', '1', u'how', 'economy', 'w', 'may', 'stop', u'after', 'coming', u'such', 'law', 'man', u'a', 'remember', 'st', u'so', 'things', 'talk', 'help', 'office', "don't", u'over', 'years', u'through', 'committee', 'cuts', 'still', u'its', u'before', 'thank', 'la', 'better', 'policy', u'ours', 'bipartisan', 'texas', '2012', u'then', u'them', 'good', 'iowa', 'nation', u'they', u'not', u'now', 'discuss', u'nor', 'always', '--', 'boehner', u'each', 'everyone', u'doing', 'ed', 'energy', 'hard', 'year', u'our', 'event', 'special', u'out', u'rt', 'rep', 'since', 'looking', 're', 'health', '7', 'got', 'gov', 'gop', 'shows', 'working', 'city', 'million', 'free', 'members', 'ask', 'care', 'could', 'days', 'david', 'american', "today's", 'think', 'first', u'yourself', 'another', 'president', 'vote', 'open', 'tomorrow', "doesn't", 'story', 'service', 'top', u'their', '2', u'too', 'passed', 'white', 'john', 'speaking', 'statement', u'that', 'hillary', 'part', 'believe', u'herself', u'than', "here's", 'obama', '11', '10', '12', '15', 'future', u'were', u'and', 'tonight', 'talking', 'say', u'have', 'need', u'any', 'congrats', '-', 'take', u'which', 'sure', u'who', u'most', 'plan', 'america', u'why', u'don', 'proud', 'm', 'voting', 'show', 'bring', 'businesses', 'democrats', 'debate', 'one', 'state', u'should', u'only', 'going', 'candidates', '8', 'local', u'do', u'his', 'get', 'watch', 'dc', 'report', u'during', 'dr', u'him', 'h', 'morning', 'bad', u'she', 'ohio', u'where', 'learn', 'fair', 'national', 'see', 'college', u'are', 'sen', 'paul', 'best', 'said', 'reform', 'federal', 'away', 'please', '3', 'r', u'between', u'we', 'jobs', 'job', 'cut', 'joe', 'news', 'debt', 'come', u'both', 'c', 'last', 'country', 'taking', u'against', u's', 'senator', "can't", 'co', 'community', 'poll', 'speak', 'conference', "it's", 'create', 'political', u'been', 'mark', u'whom', 'much', 'meeting', 'pm', 'wants', 'life', 'families', 'romney', 'republicans', '2015', '2014', u'those', u'myself', 'save', 'look', u'these', 'means', 'bill', 'budget', 'governor', u'will', u'while', 'many', 'va', 'voters', u'is', 'speech', u'it', u'itself', 'dems', u'in', 'ready', u'if', 'pay', 'make', u'same', 'speaker', '9', 'party', 'day', 'week', 'yesterday', '000', "obama's", 'tune', 'keep', u'off', 'center', u'i', 'floor', 'well', u'the', u'yours', 'left', 'icymi', u'just', u'being', 'money', 'thanks', 'questions', 'world', 'yes', 'yet', 'republican', 'family', 'candidate', u'had', 'hall', 'barack', '4', u'has', 'real', 'around', 'government', 'read', 'big', 'game', 'know', 'press', 'amp', 'like', 'd', 'lost', 'continue', u't', 'night', 'security', 'making', u'because', 'deal', 'people', 'senate', 'twitter', u'some', 'back', 'oh', 'economic', 'election', 'home', u'ourselves', u'for', 'fox', u'does', 'cnn', 'leader', u'be', 'power', 'leadership', 'post', u'by', 'hearing', u'on', u'about', 'would', 'getting', u'theirs', 'scott', 'stand', 'act', u'or', u'own', 'clinton', u'into', 'washington', 'two', u'down', 'right', u'your', u'her', 'friends', 'support', u'there', 'long', 'fight', 'start', 'pa', "we're", 'way', 'house', 'forward', u'was', 'war', 'happy', 'media', u'himself', 'hr', u'but', 'hear', u'with', u'he', 'made', 'friday', u'up', 'us', 'tell', 'record', u'below', 'agree', u'am', 'mike', u'an', u'as', u'at', 'et', 'politics', 'check', u'again', u'no', u'when', 'insurance', 'rally', 'ny', u'other', '5', u'you', 'really', "you're", "'s", 'congress', 'students', 'welcome', "let's", 'important', 'chris', 'weekend', 'ago', 'lead', 'calls', 'u', 'time', u'having', u'once'])
@@ -62,7 +60,6 @@ class Unigram_Classifier_DB:
         self.classifier_tweets = self.db['unigram_classifier_tweets']
         self.classifier_meta_event = self.db['unigram_classifier_meta_event']
         self.classifier_meta_term = self.db['unigram_classifier_meta_term']
-        self.classifier_scores = self.db['unigram_scores']
         self.classifier_tweets_cache = defaultdict(list)
         self.classifier_meta_event_cache = {}
         self.classifier_meta_term_cache = {}
@@ -79,7 +76,6 @@ class Unigram_Classifier_DB:
         self.classifier_tweets.create_index(classifier_tweets_index)
         self.classifier_meta_event.create_index([('event', pymongo.ASCENDING), ('affiliation', pymongo.ASCENDING)])
         self.classifier_meta_term.create_index([('event', pymongo.ASCENDING), ('term', pymongo.ASCENDING), ('affiliation', pymongo.ASCENDING)])
-        self.classifier_scores.create_index([('event', pymongo.ASCENDING), ('term', pymongo.ASCENDING), ('affiliation', pymongo.ASCENDING)])
 
     def clear(self):
         self.classifier_tweets.drop()
@@ -119,7 +115,7 @@ class Unigram_Classifier_DB:
         binary = Binary(x.getvalue())
         x.close()
         return binary
-    
+
     def get_event_meta(self, event):
         #event_cache {event: {affiliation: [user_ids]} } #event_cache_count {event: {affiliation: int}}
         if event in self.classifier_meta_event_cache:
@@ -199,18 +195,6 @@ class Unigram_Classifier_DB:
         self.classifier_meta_event.aggregate(pipline)
         self.log.d('complete flush_event_supplementary')
 
-    def unigram_score(self, event, affiliation, term):
-        event_counts = self.get_event_meta(event)
-        term_counts = self.get_term_meta(event, term)
-        assert len(term_counts) == 2
-        term_count = term_counts[affiliation]
-        other_term_count = sum([c for a,c in term_counts.items() if a != affiliation])
-        other_event_count = sum([c for a,c in event_counts.items() if a != affiliation])
-        other_portion = (float(other_term_count)+1)/(other_event_count+1)
-        this_portion = (float(term_count)+1)/(event_counts[affiliation]+1)
-        mp_score = this_portion * math.log(this_portion / other_portion)
-        return mp_score
-
     def flush(self, insert=False, use_pickle=False):
         self.flush_tweets()
         if (use_pickle):
@@ -227,34 +211,17 @@ class Unigram_Classifier_DB:
             for affiliation, user_ids in data.items():
                 if user_ids:
                     if insert:
-                        self.classifier_meta_event.insert({'event':event, 'affiliation':affiliation, 'user_ids':list(user_ids), 'count': len(user_ids)})
+                        self.classifier_meta_event.insert({'event':event, 'affiliation':affiliation, 'user_ids':list(user_ids)})
                     else:
-                        self.classifier_meta_event.update_one({'event':event, 'affiliation':affiliation}, {"$set": {'user_ids':  list(user_ids), 'count': len(user_ids) }}, upsert=True)
+                        self.classifier_meta_event.update_one({'event':event, 'affiliation':affiliation}, {"$set": {'user_ids':  list(user_ids) }}, upsert=True)
         self.log.d('flush term_meta {}'.format(len(self.classifier_meta_term_cache)))
         for event, data in self.classifier_meta_term_cache.items():
             for affiliation, user_id_term_pairs in data.items():
                 if user_id_term_pairs:
                     if insert:
-                        #print("INSERTING")
-                        self.classifier_meta_term.insert({'event':event, 'affiliation':affiliation,      'user_id_term_pairs':self.obj_to_binary(user_id_term_pairs)})
+                        self.classifier_meta_term.insert({'event':event, 'affiliation':affiliation, 'user_id_term_pairs':self.obj_to_binary(user_id_term_pairs)})
                     else:
-                        #print("UPDATING")
-                        self.classifier_meta_term.update_one({'event':event, 'affiliation':affiliation}, {"$set": {'user_id_term_pairs':  self.obj_to_binary(user_id_term_pairs)}}, upsert=True)
-
-        
-        self.log.d('flush unigram scores {}'.format(len(self.classifier_meta_term_cache)))
-        already_done = set()
-        for event, data in self.classifier_meta_term_cache.items():
-            for affiliation, user_id_term_pairs in data.items():
-                for user_id, term in user_id_term_pairs:
-                    if (event, affiliation, term) not in already_done:
-                        already_done.add((event, affiliation, term))
-                        count = self.get_term_meta(event, term)[affiliation]
-                        score = self.unigram_score(event, affiliation, term)
-                        if insert:
-                            self.classifier_scores.insert({'count': count, 'score': score, 'event':event, 'affiliation':affiliation, 'term':term})
-                        else:    self.classifier_scores.update_one({'event':event,'affiliation':affiliation,'term':term}, {"$set": {'count': count, 'score': score}}, upsert=True)
-                    
+                        self.classifier_meta_term.update_one({'event':event, 'affiliation':affiliation}, {"$set": {'user_id_term_pairs':  self.obj_to_binary(user_id_term_pairs) }}, upsert=True)
         self.classifier_meta_event_cache.clear()
         self.classifier_meta_term_cache.clear()
         self.flush_event_supplementary()
@@ -295,11 +262,11 @@ class Unigram_Classifier:
             term_counts = self.db.get_term_meta(event, t)
             assert len(term_counts) == 2
             for affiliation, term_count in term_counts.items():
-                #other_term_count = sum([c for a,c in term_counts.items() if a != affiliation])
-                #other_event_count = sum([c for a,c in event_counts.items() if a != affiliation])
-                #other_portion = (float(other_term_count)+1)/(other_event_count+1)
-                #this_portion = (float(term_count)+1)/(event_counts[affiliation]+1)
-                new_score = self.db.unigram_score(event, affiliation, t)#this_portion * math.log(this_portion / other_portion)
+                other_term_count = sum([c for a,c in term_counts.items() if a != affiliation])
+                other_event_count = sum([c for a,c in event_counts.items() if a != affiliation])
+                other_portion = (float(other_term_count)+1)/(other_event_count+1)
+                this_portion = (float(term_count)+1)/(event_counts[affiliation]+1)
+                new_score = this_portion * math.log(this_portion / other_portion)
                 scores[affiliation].append(new_score)
         return {k:max(v) for k,v in scores.items()}, {k:list(zip(terms, v)) for k,v in scores.items()}
 
@@ -397,7 +364,7 @@ class API_pool():
         pass
 
     def __init__(self, authentications, wait=False):
-        self.wait = True
+        self.wait = wait
         self.log = Logger("API_pool");
         self.APIs = [];
         self.status = []; #-1 is idle, time is busy
@@ -508,8 +475,7 @@ def get_section(l, i, j):
     print(i,j)
     assert i >= 0 and j >= 0 and i < j
     part_size = float(len(l))/j
-    # TEMP EDIT: USE ENTIRE THING ##############################################################################################################################################
-    return l #l[int(part_size*i) : int(part_size*(i+1))]
+    return l[int(part_size*i) : int(part_size*(i+1))]
 
 if __name__ == '__main__':
     log = Logger('main')
@@ -524,11 +490,11 @@ if __name__ == '__main__':
     url = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/cs4300')
     parsed_url = urlsplit(url)
     db_name = parsed_url.path[1:]
-   # authentications = json.loads(base64.b64decode(os.getenv('TWEET_AUTHENTICATIONS', 'W10=').encode('ascii')).decode('ascii'))
+    authentications = json.loads(base64.b64decode(os.getenv('TWEET_AUTHENTICATIONS', 'W10=').encode('ascii')).decode('ascii'))
     #log.d(str(authentications))
     #import base64;base64.b64encode(json.dumps(authutications))
     #export TWEET_AUTHENTICATIONS=ABOVE_RESULT_WITHOUT_QUOT
-    authentications = [{"consumer_secret": "BfcpZijhDD8xqvV6FSo6MOtn7rWgahjy25j0pAvSz2nrnaTCpQ", "access_key": "3877172955-okHQebGAFkGQR9Umn0enhzJCetn9Jqf83rtOQcw", "consumer_key": "7MLUo51A96kO1C8d6VYvd2G25", "access_secret": "SaUrB3ETDY0uZcwqEq5yLtwV71Lidno8KkLESnNxi8YuF"}, {"consumer_secret": "FbmY3Hv6VCn83HrFPvPyDYyY6EtubBXff9eCyaT4XTCB1q1zlK", "access_key": "3877172955-86PXAfliiE15siEHswHKU28ZUpfNWTwqe4l1Mni", "consumer_key": "oNPpB2s30cPsL5GsbpCotI8Ld", "access_secret": "Ae3iAbCcaBw4eFequKwwIzPl0rcFzyETMGOslpq8hIsKP"}, {"consumer_secret": "w43cxsth5jsf7SeI4LBG3cqK02vOJZHAfMvLOIv0SS3MNLawaD", "access_key": "3877172955-bjwuASM26nkKUGXS8Sc67Aec7EBZFxWZJ9whPNZ", "consumer_key": "iMo6Xgic4BJDL8QMk4diLnHrJ", "access_secret": "7Xc3nYMBzsJB20KozJtDTNLjc857GkZTiV6nuc5nSWsTb"}, {"consumer_secret": "Nni6aW5JGr1m2uZ10dsizqRZmx7V7gshiMcx2k8iHDYqk75N9b", "access_key": "3877172955-TgoBLcomOfEitZsVTzBILmqpdqxLzhSvz8BaPpe", "consumer_key": "KykSJ2ecnLZ0fhdpNe9UXKiqk", "access_secret": "6JmuZlz91e4IcedXflKL2zGdNwgkYxV0WMIQDIbW7CQaY"}, {"consumer_secret": "5MYfaR7sPsvUpqDqFbwjG1AsXovJhg6F72KcdLSV1ZfLOb1X8d", "access_key": "717524076248477701-wqOvtvOXTsPa93RiyoZtKXv778MkFDS", "consumer_key": "s2HobRFCjSkNvt8VsrPMJfDVH", "access_secret": "EHA0qJQc1dxWPylF5Eq4rIHLZIoYqdqV3ZKK2Rz8P2jvK"}, {"consumer_secret": "2QkVh4TkO4m6bjwXbFpbG0UE8vN3O22eAyDhyydHUSKBxVEiFm", "access_key": "717524076248477701-aJUgF3uOuTD90qX1WmHNWRT2LXMLhUg", "consumer_key": "oDhRm2Q4DuRY9RGx9UtVl0kzo", "access_secret": "TNnt6xsJCGuljpA3IrbCR915HSQatCxGXcYgEaZlsMNdQ"}, {"consumer_secret": "p7Ap6gpQH0CpUnLL3fUF5EzFcRQjpkzAzxlw6704JtQmJ7fiS5", "access_key": "717524076248477701-MTZo9J9h4yZZBgNYv6rpfKu2IUvLAfY", "consumer_key": "t4xzUgIWRz05rJKrKuEIZlbOC", "access_secret": "18KTcI5sUgW6dQya2EQZ00OXI7furHkuMxIbrxrhAjSrh"}, {"consumer_key": "eNfjPJT12a1aiFGaVSNnn6nTg", "consumer_secret": "wJk3RhuhUo5MFNnnLaJQIM2Q93gFeMMfWGUzoYd6z49z8Kis2w", "access_key": "717950588076601344-yDbU6iN96hMagodDyv2iqTxuiNQ7VkS", "access_secret": "OycOAMytzLXlik4qO32iLWxPoPaqNmoXlDrW6QfhhX7Vd"}]
+    #authentications = [{"consumer_key": "eNfjPJT12a1aiFGaVSNnn6nTg", "consumer_secret": "wJk3RhuhUo5MFNnnLaJQIM2Q93gFeMMfWGUzoYd6z49z8Kis2w", "access_key": "717950588076601344-yDbU6iN96hMagodDyv2iqTxuiNQ7VkS", "access_secret": "OycOAMytzLXlik4qO32iLWxPoPaqNmoXlDrW6QfhhX7Vd"}]
     unigram_classifier_db = Unigram_Classifier_DB(url, db_name, ['democrats', 'republicans'])
     scrapper_meta_db = Scrapper_META_DB(url, db_name)
     classifier = Unigram_Classifier(unigram_classifier_db)
