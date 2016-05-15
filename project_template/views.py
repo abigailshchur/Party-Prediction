@@ -143,9 +143,10 @@ def score_tweet(tweet):
     
     ## Use this for classification ##
     word_array = re.sub("(@[A-Za-z0-9]+)|([^0-9A-Za-z \t])|(\w+:\/\/\S+)"," ",tweet['text'].lower()).split()
-    
+    tweet_dict['id'] = tweet['id']
     ## Rest is formatting ##
-    tweet_dict['tweet']={'text': tweet['text'], 'user_id': tweet['id']}
+    user = tweet['user']
+    tweet_dict['tweet']={'text': tweet['text'], 'user_id': tweet['user'].id}
     tweet_dict['scores'] = {'democrats':5, 'republicans':5}
     tweet_dict['score_detail'] = {'democrats': [], 'republicans': []}
     for i in word_array:
@@ -156,7 +157,7 @@ def score_tweet(tweet):
 
 def get_to_tweets(event):
 	#sid = SentimentIntensityAnalyzer()
-	new_tweets = get_tweets_for_a_hashtag(event, num_tweets = 100, views = ['text', 'id'])
+	new_tweets = get_tweets_for_a_hashtag(event, num_tweets = 100, views = ['text', 'id', 'user'])
 	tweets = []
 	for i in new_tweets:
 		tweets.append(score_tweet(i))
