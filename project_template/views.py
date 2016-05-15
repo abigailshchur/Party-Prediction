@@ -137,9 +137,9 @@ def distinct(l, key):
 #    return d["neu"] > d["pos"] and d["neu"] > d["neg"]
 def unigram_score(event, affiliation, term):
     #event_counts = self.get_event_meta(event)
-    event_counts = uc_event_counts.find_one('event': event)
+    event_counts = uc_event_counts.find_one({'event': event})
     #term_counts = self.get_term_meta(event, term)
-    term_counts = uc_term_counts.find_one('event': event, 'term': term)
+    term_counts = uc_term_counts.find_one({'event': event, 'term': term})
     #assert len(term_counts) == 2
     term_count = term_counts[affiliation]
     other_term_count = sum([c for a,c in term_counts.items() if a != affiliation])
