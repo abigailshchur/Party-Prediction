@@ -25,7 +25,7 @@ import sys
 # sys.path.append('../jobs/')
 job_dir = os.path.join(os.path.dirname(__file__), os.pardir, 'jobs')
 sys.path.append(job_dir)
-import scrapper
+#import scrapper
 
 #from project_template import classifier
 
@@ -46,6 +46,7 @@ classifier_tweets = db['unigram_classifier_tweets']
 events = db['unigram_classifier_meta_event']
 event_popularity = db['unigram_classifier_meta_event_popularity']
 classifier_terms = db['unigram_classifier_meta_term']
+unigram_scores = db['unigram_scores']
 #event_scores = db['event_scores']
 #unigram_scores = db['unigram_scores']
 
@@ -136,31 +137,44 @@ def distinct(l, key):
 #def mostly_neu(d):
 #    return d["neu"] > d["pos"] and d["neu"] > d["neg"]
 
+def calculate_score(terms, event):
+    scores = defaultdict(list)
+    for t in terms:
+        for affiliation in ["democrats", "republicans"]:
+            uni = unigram_scores.find_one({"event": event, "affiliation": affiliation, "term": t})
+            new_score = uni["score"] if uni else 0
+            scores[affiliation].append(new_score)
+    return {k:max(v) for k,v in scores.items()}, {k:list(zip(terms, v)) for k,v in scores.items()}
 
 ## Return democrat score and republican score tuple ##
-def score_tweet(tweet):
+def score_tweet(tweet, event):
     tweet_dict = {}
     
     ## Use this for classification ##
-    word_array = re.sub("(@[A-Za-z0-9]+)|([^0-9A-Za-z \t])|(\w+:\/\/\S+)"," ",tweet['text'].lower()).split()
+    word_array = re.sub("(@[A-Za-z0-9]+)|([^0-9A-Za-z \t])|(\w+:\/\/\S+)"," ",tweet['text']).split()
+    terms = [x.lower() for x in word_array]
+    
     tweet_dict['id'] = tweet['id']
     ## Rest is formatting ##
-    user = tweet['user']
-    tweet_dict['tweet']={'text': tweet['text'], 'user_id': tweet['user'].id}
-    tweet_dict['scores'] = {'democrats':5, 'republicans':5}
-    tweet_dict['score_detail'] = {'democrats': [], 'republicans': []}
-    for i in word_array:
-        tweet_dict['score_detail']['democrats'].append([i, 2])
-        tweet_dict['score_detail']['republicans'].append([i, 2])
+    #user = tweet['user']
+    tweet_dict['tweet']={'text': tweet['text'], 'user_id': tweet['user'].id, 'created_at' : tweet['created_at']}
+    affil_scores, term_scores = calculate_score(terms, event)
+    tweet_dict['scores'] = affil_scores #{'democrats':5, 'republicans':5}
+    tweet_dict['score_detail'] = term_scores
+    #print(tweet_dict)
+    #tweet_dict['score_detail'] = {'democrats': [], 'republicans': []}
+    #for i in word_array:
+    #    tweet_dict['score_detail']['democrats'].append([i, 2])
+    #    tweet_dict['score_detail']['republicans'].append([i, 2])
     return tweet_dict
 
 
 def get_to_tweets(event):
 	#sid = SentimentIntensityAnalyzer()
-	new_tweets = get_tweets_for_a_hashtag(event, num_tweets = 100, views = ['text', 'id', 'user'])
+	new_tweets = get_tweets_for_a_hashtag(event, num_tweets = 100, views = ['text', 'id', 'user', 'created_at'])
 	tweets = []
 	for i in new_tweets:
-		tweets.append(score_tweet(i))
+		tweets.append(score_tweet(i, event))
 	#t = scrapper.classifier
 	#calculate_score("test test", event)
 	#tweets = list(classifier_tweets.find({'event': event}))
@@ -251,7 +265,7 @@ def get_tweets_for_a_hashtag(hashtag, num_tweets = 10, views = ['text']):
 		for view in views:
 			try:
 				out_dickt[view] = twit_dickt[view]
-			except Exception, e:
-				raise e
+			except:
+				raise
 		out_list.append(out_dickt)
 	return out_list
