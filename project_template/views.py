@@ -141,6 +141,8 @@ def unigram_score(event, affiliation, term):
     #term_counts = self.get_term_meta(event, term)
     term_counts = uc_term_counts.find_one({'event': event, 'term': term})
     #assert len(term_counts) == 2
+    if term_counts is None:
+    	return None
     term_count = term_counts[affiliation]
     other_term_count = sum([c for a,c in term_counts.items() if a != affiliation])
     other_event_count = sum([c for a,c in event_counts.items() if a != affiliation])
