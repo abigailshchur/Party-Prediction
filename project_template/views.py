@@ -6,7 +6,7 @@ from django.template import loader
 from .form import QueryForm
 from .test import find_similar
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-
+import math
 import re
 import os
 from collections import defaultdict
