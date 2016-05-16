@@ -191,6 +191,12 @@ def score_tweet(tweet, event):
     #    tweet_dict['score_detail']['republicans'].append([i, 2])
     return tweet_dict
 
+def remove_nulls(tweets):
+	tweets_new = []
+	for i in tweets:
+		if i['scores']['democrats'] is not None:
+			tweets_new.append(i)
+	return tweets_new
 
 def get_to_tweets(event):
 	#sid = SentimentIntensityAnalyzer()
@@ -198,6 +204,7 @@ def get_to_tweets(event):
 	tweets = []
 	for i in new_tweets:
 		tweets.append(score_tweet(i, event))
+	tweets = remove_nulls(tweets)
 	#t = scrapper.classifier
 	#calculate_score("test test", event)
 	#tweets = list(classifier_tweets.find({'event': event}))
