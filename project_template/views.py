@@ -179,8 +179,9 @@ def score_tweet(tweet, event):
     	rep.append(i['score_republicans'])
     	score_detail['democrats'].append([i['term'], i['score_democrats']])
     	score_detail['republicans'].append([i['term'], i['score_republicans']])
-    tweet_dict['scores'] = {'democrats': max(dem), 'republicans': max(rep)}
-    tweet_dict['score_detail'] = score_detail
+    if len(dem) > 0:
+    	tweet_dict['scores'] = {'democrats': max(dem), 'republicans': max(rep)}
+    	tweet_dict['score_detail'] = score_detail
     #print(tweet_dict)
     #tweet_dict['score_detail'] = {'democrats': [], 'republicans': []}
     #for i in word_array:
