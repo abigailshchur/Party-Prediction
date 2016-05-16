@@ -180,7 +180,7 @@ def score_tweet(tweet, event):
     	score_detail['democrats'].append([i['term'], i['score_democrats']])
     	score_detail['republicans'].append([i['term'], i['score_republicans']])
     if len(dem) > 0:
-    	tweet_dict['scores'] = {'democrats': max(dem), 'republicans': max(rep)}
+    	tweet_dict['scores'] = {'democrats': float(sum(dem))/len(dem), 'republicans': float(sum(rep))/len(rep)}
     else:
     	tweet_dict['scores'] = {'democrats': None, 'republicans': None}
     tweet_dict['score_detail'] = score_detail
