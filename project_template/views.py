@@ -135,32 +135,28 @@ def distinct(l, key):
 
 #def mostly_neu(d):
 #    return d["neu"] > d["pos"] and d["neu"] > d["neg"]
-def unigram_score(event, affiliation, term):
-    #event_counts = self.get_event_meta(event)
-    event_counts = uc_event_counts.find_one({'event': event})
-    #term_counts = self.get_term_meta(event, term)
-    term_counts = uc_term_counts.find_one({'event': event, 'term': term})
-    #assert len(term_counts) == 2
-    if term_counts is None:
-    	return None
-    event_counts = event_counts['count']
-    term_counts = term_counts['count']
-    term_count = term_counts[affiliation]
-    other_term_count = sum([c for a,c in term_counts.items() if a != affiliation])
-    other_event_count = sum([c for a,c in event_counts.items() if a != affiliation])
-    other_portion = (float(other_term_count)+1)/(other_event_count+1)
-    this_portion = (float(term_count)+1)/(event_counts[affiliation]+1)
-    mp_score = this_portion * math.log(this_portion / other_portion)
-    return mp_score
-
-def calculate_score(terms, event):
-    scores = defaultdict(list)
-    for t in terms:
-        for affiliation in ["democrats", "republicans"]:
-            uni = unigram_score(event, affiliation, t)
-            new_score = uni["score"] if uni else 0
-            scores[affiliation].append(new_score)
-    return {k:max(v) for k,v in scores.items()}, {k:list(zip(terms, v)) for k,v in scores.items()}
+def get_scores(event, terms):
+    pipeline = []
+    pipeline.append({'$match': {'event': event, 'term': { '$in': terms }}})
+    pipeline.append({'$lookup': {'from': 'unigram_classifier_meta_event_count',
+                                 'localField': 'event',
+                                 'foreignField': 'event',
+                                 'as': 'event_count'}})
+    pipeline.append({'$project': {'_id': 0,
+                                  'term': 1,
+                                  'count': 1,
+                                  'event_count': {'$arrayElemAt': ['$event_count', 0]}}})
+    pipeline.append({'$project': {'term':1,
+                                  'democrats_portion': {'$divide': [{'$add': [1, '$count.democrats']},
+                                                                    {'$add': [1, '$event_count.count.democrats']}] },
+                                  'republicans_portion': {'$divide': [{'$add': [1, '$count.republicans']},
+                                                                      {'$add': [1, '$event_count.count.republicans']}] }
+                                 }})
+    pipeline.append({'$project': {'term':1,
+                                   'score_democrats': {'$multiply': ['$democrats_portion', {'$ln': {'$divide': ['$democrats_portion', '$republicans_portion']}}]},
+                                   'score_republicans': {'$multiply': ['$republicans_portion', {'$ln': {'$divide': ['$republicans_portion', '$democrats_portion']}}]}
+                                   }})
+    return list(db['unigram_classifier_meta_term_count'].aggregate(pipeline))
 
 ## Return democrat score and republican score tuple ##
 def score_tweet(tweet, event):
@@ -174,9 +170,17 @@ def score_tweet(tweet, event):
     ## Rest is formatting ##
     #user = tweet['user']
     tweet_dict['tweet']={'text': tweet['text'], 'user_id': tweet['user'].id, 'created_at' : tweet['created_at']}
-    affil_scores, term_scores = calculate_score(terms, event)
-    tweet_dict['scores'] = affil_scores #{'democrats':5, 'republicans':5}
-    tweet_dict['score_detail'] = term_scores
+    scores = get_scores(event, terms)
+    dem = []
+    rep = []
+    score_detail = {'democrats': [], 'republicans': []}
+    for i in scores:
+    	dem.append(i['score_democrats'])
+    	rep.append(i['score_republicans'])
+    	score_detail['democrats'].append([i['term'], i['score_democrats']])
+    	score_detail['republicans'].append([i['term'], i['score_republicans']])
+    tweet_dict['scores'] = {'democrats': max(dem), 'republicans': max(rep)}
+    tweet_dict['score_detail'] = score_detail
     #print(tweet_dict)
     #tweet_dict['score_detail'] = {'democrats': [], 'republicans': []}
     #for i in word_array:
