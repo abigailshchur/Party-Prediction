@@ -200,7 +200,7 @@ def remove_nulls(tweets):
 
 def get_to_tweets(event):
 	#sid = SentimentIntensityAnalyzer()
-	new_tweets = get_tweets_for_a_hashtag(event, num_tweets = 100, views = ['text', 'id', 'user', 'created_at'])
+	new_tweets = get_tweets_for_a_hashtag(event, num_tweets = 200, views = ['text', 'id', 'user', 'created_at'])
 	tweets = []
 	for i in new_tweets:
 		tweets.append(score_tweet(i, event))
