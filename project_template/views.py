@@ -288,7 +288,7 @@ def get_tweets_for_a_hashtag(hashtag, num_tweets = 10, views = ['text']):
 	cur_key += 1
 	if cur_key >= len(keys):
 		cur_key = 0
-	qr = tweepy.Cursor(api.search, q=hashtag, language = 'en').items(num_tweets)
+	qr = tweepy.Cursor(api.search, q=hashtag, lang = ['en']).items(num_tweets)
 	out_list = []
 	for twit in qr:
 		twit_dickt = twit.__dict__
