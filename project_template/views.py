@@ -22,39 +22,6 @@ import tweepy
 import threading
 import sys
 import time
-# sys.path.insert(0, '../jobs')
-# sys.path.append('../jobs/')
-job_dir = os.path.join(os.path.dirname(__file__), os.pardir, 'jobs')
-sys.path.append(job_dir)
-#import scrapper
-
-#from project_template import classifier
-
-url = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/cs4300')
-parsed_url = urlsplit(url)
-db_name = parsed_url.path[1:]
-#print(db_name)
-
-client = MongoClient(url)
-db = client[db_name]
-
-if '@' in url:
-    user, password = parsed_url.netloc.split('@')[0].split(':')
-    db.authenticate(user, password)
-    print(user, password)
-
-classifier_tweets = db['unigram_classifier_tweets']
-events = db['unigram_classifier_meta_event']
-event_popularity = db['unigram_classifier_meta_event_popularity']
-classifier_terms = db['unigram_classifier_meta_term']
-unigram_scores = db['unigram_scores']
-#event_scores = db['event_scores']
-#unigram_scores = db['unigram_scores']
-
-#print(urllib.request.urlopen("http://www.sentiment140.com/api/classify?text=new+moon+is+awesome&query=new+moon").read())
-
-t = threading.Thread(target=get_new_tweets)
-t.start()
 
 def get_event_hint(query, n):
     return list(event_popularity.find({"event": re.compile(query, re.IGNORECASE)}, {'event':1, '_id':0}).sort('avg', -1).limit(n))
@@ -292,3 +259,37 @@ def get_new_tweets():
         for item in get_top_events(50):
             get_tweets_for_a_hashtag(item["event"], 100, views=['text', 'id', 'user', 'created_at'])
             time.sleep(1)
+
+# sys.path.insert(0, '../jobs')
+# sys.path.append('../jobs/')
+job_dir = os.path.join(os.path.dirname(__file__), os.pardir, 'jobs')
+sys.path.append(job_dir)
+#import scrapper
+
+#from project_template import classifier
+
+url = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/cs4300')
+parsed_url = urlsplit(url)
+db_name = parsed_url.path[1:]
+#print(db_name)
+
+client = MongoClient(url)
+db = client[db_name]
+
+if '@' in url:
+    user, password = parsed_url.netloc.split('@')[0].split(':')
+    db.authenticate(user, password)
+    print(user, password)
+
+classifier_tweets = db['unigram_classifier_tweets']
+events = db['unigram_classifier_meta_event']
+event_popularity = db['unigram_classifier_meta_event_popularity']
+classifier_terms = db['unigram_classifier_meta_term']
+unigram_scores = db['unigram_scores']
+#event_scores = db['event_scores']
+#unigram_scores = db['unigram_scores']
+
+#print(urllib.request.urlopen("http://www.sentiment140.com/api/classify?text=new+moon+is+awesome&query=new+moon").read())
+
+t = threading.Thread(target=get_new_tweets)
+t.start()
