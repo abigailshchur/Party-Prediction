@@ -123,6 +123,7 @@ def word_color(x, side_or_neutral):
     return x
 
 def distinct(l, key):
+    return l ## testing
     r = []
     keys_tokens = []
     for x in l:

@@ -28,7 +28,7 @@ import random
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.realpath(__file__)))
-    
+
 import id_list
 
 stop_words = set([u'all', 'gt', 'go', 'follow', 'issues', 'votes', 'tx', 'tweet', 'obamacare', 'young', u'to', 'program', 'voted', u'under', 'women', 'town', u'very', 'every', u'yourselves', u'did', 'ryan', 'race', 'team', 'small', "i'll", 'says', 'leaders', 'ted', 'sign', 'video', 'pass', u'further', 'even', u'what', 'business', 'find', u'above', 'new', 'ever', 'public', 'dem', 'full', 'iran', 'never', u'here', 'let', 'address', u'hers', 'strong', 'change', 'great', 'potus', '30', 'action', "i'm", 'honor', 'via', 'love', 'campaign', 'win', 'county', 'put', '1st', 'use', u'from', 'usa', 'visit', 'bush', 'next', u'few', 'live', 'call', '6', 'black', u'themselves', u'until', 'today', u'more', 'share', 'must', u'me', 'high', 'join', 'mc', 'rights', u'this', 'work', 'mt', u'can', u'of', 'meet', u'my', 'history', 'give', 'tax', 'states', 'want', 'times', 'needs', 'end', 'breaking', '1', u'how', 'economy', 'w', 'may', 'stop', u'after', 'coming', u'such', 'law', 'man', u'a', 'remember', 'st', u'so', 'things', 'talk', 'help', 'office', "don't", u'over', 'years', u'through', 'committee', 'cuts', 'still', u'its', u'before', 'thank', 'la', 'better', 'policy', u'ours', 'bipartisan', 'texas', '2012', u'then', u'them', 'good', 'iowa', 'nation', u'they', u'not', u'now', 'discuss', u'nor', 'always', '--', 'boehner', u'each', 'everyone', u'doing', 'ed', 'energy', 'hard', 'year', u'our', 'event', 'special', u'out', u'rt', 'rep', 'since', 'looking', 're', 'health', '7', 'got', 'gov', 'gop', 'shows', 'working', 'city', 'million', 'free', 'members', 'ask', 'care', 'could', 'days', 'david', 'american', "today's", 'think', 'first', u'yourself', 'another', 'president', 'vote', 'open', 'tomorrow', "doesn't", 'story', 'service', 'top', u'their', '2', u'too', 'passed', 'white', 'john', 'speaking', 'statement', u'that', 'hillary', 'part', 'believe', u'herself', u'than', "here's", 'obama', '11', '10', '12', '15', 'future', u'were', u'and', 'tonight', 'talking', 'say', u'have', 'need', u'any', 'congrats', '-', 'take', u'which', 'sure', u'who', u'most', 'plan', 'america', u'why', u'don', 'proud', 'm', 'voting', 'show', 'bring', 'businesses', 'democrats', 'debate', 'one', 'state', u'should', u'only', 'going', 'candidates', '8', 'local', u'do', u'his', 'get', 'watch', 'dc', 'report', u'during', 'dr', u'him', 'h', 'morning', 'bad', u'she', 'ohio', u'where', 'learn', 'fair', 'national', 'see', 'college', u'are', 'sen', 'paul', 'best', 'said', 'reform', 'federal', 'away', 'please', '3', 'r', u'between', u'we', 'jobs', 'job', 'cut', 'joe', 'news', 'debt', 'come', u'both', 'c', 'last', 'country', 'taking', u'against', u's', 'senator', "can't", 'co', 'community', 'poll', 'speak', 'conference', "it's", 'create', 'political', u'been', 'mark', u'whom', 'much', 'meeting', 'pm', 'wants', 'life', 'families', 'romney', 'republicans', '2015', '2014', u'those', u'myself', 'save', 'look', u'these', 'means', 'bill', 'budget', 'governor', u'will', u'while', 'many', 'va', 'voters', u'is', 'speech', u'it', u'itself', 'dems', u'in', 'ready', u'if', 'pay', 'make', u'same', 'speaker', '9', 'party', 'day', 'week', 'yesterday', '000', "obama's", 'tune', 'keep', u'off', 'center', u'i', 'floor', 'well', u'the', u'yours', 'left', 'icymi', u'just', u'being', 'money', 'thanks', 'questions', 'world', 'yes', 'yet', 'republican', 'family', 'candidate', u'had', 'hall', 'barack', '4', u'has', 'real', 'around', 'government', 'read', 'big', 'game', 'know', 'press', 'amp', 'like', 'd', 'lost', 'continue', u't', 'night', 'security', 'making', u'because', 'deal', 'people', 'senate', 'twitter', u'some', 'back', 'oh', 'economic', 'election', 'home', u'ourselves', u'for', 'fox', u'does', 'cnn', 'leader', u'be', 'power', 'leadership', 'post', u'by', 'hearing', u'on', u'about', 'would', 'getting', u'theirs', 'scott', 'stand', 'act', u'or', u'own', 'clinton', u'into', 'washington', 'two', u'down', 'right', u'your', u'her', 'friends', 'support', u'there', 'long', 'fight', 'start', 'pa', "we're", 'way', 'house', 'forward', u'was', 'war', 'happy', 'media', u'himself', 'hr', u'but', 'hear', u'with', u'he', 'made', 'friday', u'up', 'us', 'tell', 'record', u'below', 'agree', u'am', 'mike', u'an', u'as', u'at', 'et', 'politics', 'check', u'again', u'no', u'when', 'insurance', 'rally', 'ny', u'other', '5', u'you', 'really', "you're", "'s", 'congress', 'students', 'welcome', "let's", 'important', 'chris', 'weekend', 'ago', 'lead', 'calls', 'u', 'time', u'having', u'once'])
@@ -62,7 +62,9 @@ class Unigram_Classifier_DB:
         self.classifier_tweets = self.db['unigram_classifier_tweets']
         self.classifier_meta_event = self.db['unigram_classifier_meta_event']
         self.classifier_meta_term = self.db['unigram_classifier_meta_term']
-        self.classifier_scores = self.db['unigram_scores']
+        #self.classifier_scores = self.db['unigram_scores']
+        self.classifier_meta_event_count = self.db['unigram_classifier_meta_event_count']
+        self.classifier_meta_term_count = self.db['unigram_classifier_meta_term_count']
         self.classifier_tweets_cache = defaultdict(list)
         self.classifier_meta_event_cache = {}
         self.classifier_meta_term_cache = {}
@@ -79,7 +81,9 @@ class Unigram_Classifier_DB:
         self.classifier_tweets.create_index(classifier_tweets_index)
         self.classifier_meta_event.create_index([('event', pymongo.ASCENDING), ('affiliation', pymongo.ASCENDING)])
         self.classifier_meta_term.create_index([('event', pymongo.ASCENDING), ('term', pymongo.ASCENDING), ('affiliation', pymongo.ASCENDING)])
-        self.classifier_scores.create_index([('event', pymongo.ASCENDING), ('term', pymongo.ASCENDING), ('affiliation', pymongo.ASCENDING)])
+        self.classifier_meta_event_count.create_index([('event', pymongo.ASCENDING)])
+        self.classifier_meta_term_count.create_index([('event', pymongo.ASCENDING)], [('term', pymongo.ASCENDING)])
+        #self.classifier_scores.create_index([('event', pymongo.ASCENDING), ('term', pymongo.ASCENDING), ('affiliation', pymongo.ASCENDING)])
 
     def clear(self):
         self.classifier_tweets.drop()
@@ -119,7 +123,7 @@ class Unigram_Classifier_DB:
         binary = Binary(x.getvalue())
         x.close()
         return binary
-    
+
     def get_event_meta(self, event):
         #event_cache {event: {affiliation: [user_ids]} } #event_cache_count {event: {affiliation: int}}
         if event in self.classifier_meta_event_cache:
@@ -185,7 +189,7 @@ class Unigram_Classifier_DB:
         group_stage = { '_id' : '$event', 'avg': { '$avg': "$count" }}
         for affiliation in self.affiliations:
         	group_stage[affiliation] = { '$sum': { '$cond': [ { '$eq': [ "$affiliation", affiliation ] }, "$count", 0 ] } }
-            
+
         project_stage = {'event': '$_id', 'avg': 1}
         for affiliation in self.affiliations:
         	project_stage[affiliation] = 1
@@ -241,7 +245,7 @@ class Unigram_Classifier_DB:
                         #print("UPDATING")
                         self.classifier_meta_term.update_one({'event':event, 'affiliation':affiliation}, {"$set": {'user_id_term_pairs':  self.obj_to_binary(user_id_term_pairs)}}, upsert=True)
 
-        
+
         self.log.d('flush unigram scores {}'.format(len(self.classifier_meta_term_cache)))
         already_done = set()
         for event, data in self.classifier_meta_term_cache.items():
@@ -251,10 +255,14 @@ class Unigram_Classifier_DB:
                         already_done.add((event, affiliation, term))
                         count = self.get_term_meta(event, term)[affiliation]
                         score = self.unigram_score(event, affiliation, term)
-                        if insert:
-                            self.classifier_scores.insert({'count': count, 'score': score, 'event':event, 'affiliation':affiliation, 'term':term})
-                        else:    self.classifier_scores.update_one({'event':event,'affiliation':affiliation,'term':term}, {"$set": {'count': count, 'score': score}}, upsert=True)
-                    
+                        # if insert:
+                        #     self.classifier_scores.insert({'count': count, 'score': score, 'event':event, 'affiliation':affiliation, 'term':term})
+                        # else:
+                        #     self.classifier_scores.update_one({'event':event,'affiliation':affiliation,'term':term}, {"$set": {'count': count, 'score': score}}, upsert=True)
+        for event, count in self.classifier_meta_event_cache.items():
+            self.classifier_meta_event_count.update_one({'event':event}, {'count': count}, upsert=True)
+        for event, term in self.classifier_meta_term_cache.keys():
+            self.classifier_meta_term_count.update_one({'event':event, 'term':term}, {'count': classifier_meta_term_cache_count[(event,term)]}, upsert=True)
         self.classifier_meta_event_cache.clear()
         self.classifier_meta_term_cache.clear()
         self.flush_event_supplementary()
