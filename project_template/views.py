@@ -21,6 +21,7 @@ from pymongo import MongoClient
 import tweepy
 import threading
 import sys
+import datetime
 import time
 
 def get_event_hint(query, n):
@@ -156,13 +157,18 @@ def get_to_tweets(event):
         tweets.append(score_tweet(i, event))
     #t = scrapper.classifier
     #calculate_score("test test", event)
-    tweets = distinct(tweets, lambda x: x['tweet']['text'])
+
     dems = list(sorted(tweets, key=lambda x: x["scores"]["democrats"],   reverse=True))
     reps = list(sorted(tweets, key=lambda x: x["scores"]["republicans"], reverse=True))
 
     #neu_classes = classifier.predict(tweets)
     #neutral = [x for i, x in enumerate(tweets) if neu_classes[i] == 1]
     neutral = list(sorted(tweets, key=lambda x:max(x["scores"]["democrats"], x["scores"]["republicans"])))
+
+    #print(len(dems))
+    dems = distinct(dems[:100], lambda x: x['tweet']['text'])
+    reps = distinct(reps[:100], lambda x: x['tweet']['text'])
+    neutral = distinct(neutral[:100], lambda x: x['tweet']['text'])
 
     #print("#### DEMS ######")
     #print(classifier.predict(dems))
@@ -231,7 +237,8 @@ tweets_cache = {}
 def get_tweets_for_a_hashtag(hashtag, num_tweets = 10, views = ['text']):
     global cur_key, tweets_cache
 
-    if hashtag in tweets_cache and time.time() < tweets_cache[hashtag]["time"] + 24*3600:
+    if hashtag in tweets_cache and datetime.datetime.utcnow() - tweets_cache[hashtag]["time"] < datetime.timedelta(1): # cache for 24 hours
+        print("using cached tweets")
         return tweets_cache[hashtag]["contents"]
 
     auth = tweepy.OAuthHandler(keys[cur_key][0], keys[cur_key][1])
@@ -240,23 +247,30 @@ def get_tweets_for_a_hashtag(hashtag, num_tweets = 10, views = ['text']):
     cur_key += 1
     if cur_key >= len(keys):
         cur_key = 0
-    qr = tweepy.Cursor(api.search, q=hashtag, lang="en").items(num_tweets)
+
     out_list = []
-    for twit in qr:
-        twit_dickt = twit.__dict__
-        out_dickt = {}
-        for view in views:
-            try:
-                out_dickt[view] = twit_dickt[view]
-            except:
-                raise
-        out_list.append(out_dickt)
-    tweets_cache[hashtag] = {"time": time.time(), "contents": out_list}
+    try:
+        qr = tweepy.Cursor(api.search, q=hashtag, lang="en").items(num_tweets)
+
+        for twit in qr:
+            twit_dickt = twit.__dict__
+            out_dickt = {}
+            for view in views:
+                try:
+                    out_dickt[view] = twit_dickt[view]
+                except:
+                    raise
+            out_list.append(out_dickt)
+        tweets_cache[hashtag] = {"time": datetime.datetime.utcnow(),
+                                 "contents": out_list}
+    except:
+        print("out of Twitter authentications")            
     return out_list
 
 def get_new_tweets():
     while True:
         for item in get_top_events(50):
+            print("caching tweets for", item["event"])
             get_tweets_for_a_hashtag(item["event"], 100, views=['text', 'id', 'user', 'created_at'])
             time.sleep(1)
 
