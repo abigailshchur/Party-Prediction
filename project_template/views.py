@@ -123,7 +123,6 @@ def word_color(x, side_or_neutral):
     return x
 
 def distinct(l, key):
-    return l ## testing
     r = []
     keys_tokens = []
     for x in l:
@@ -180,7 +179,7 @@ def score_tweet(tweet, event):
 
 def get_to_tweets(event):
     #sid = SentimentIntensityAnalyzer()
-    new_tweets = get_tweets_for_a_hashtag(event, num_tweets = 100, views = ['text', 'id', 'user', 'created_at'])
+    new_tweets = get_tweets_for_a_hashtag(event, num_tweets = 1, views = ['text', 'id', 'user', 'created_at'])
     tweets = list(classifier_tweets.find({'event': event}))
     for i in new_tweets:
         tweets.append(score_tweet(i, event))
