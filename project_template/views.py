@@ -19,8 +19,9 @@ except ImportError:
 
 from pymongo import MongoClient
 import tweepy
-
+import threading
 import sys
+import time
 # sys.path.insert(0, '../jobs')
 # sys.path.append('../jobs/')
 job_dir = os.path.join(os.path.dirname(__file__), os.pardir, 'jobs')
@@ -51,6 +52,9 @@ unigram_scores = db['unigram_scores']
 #unigram_scores = db['unigram_scores']
 
 #print(urllib.request.urlopen("http://www.sentiment140.com/api/classify?text=new+moon+is+awesome&query=new+moon").read())
+
+t = threading.Thread(target=get_new_tweets)
+t.start()
 
 def get_event_hint(query, n):
     return list(event_popularity.find({"event": re.compile(query, re.IGNORECASE)}, {'event':1, '_id':0}).sort('avg', -1).limit(n))
@@ -85,7 +89,7 @@ def get_top_events(n):
         red = int(float(num_reps) / total * 255)
         blue = int(float(num_dems) / total * 255)
         item["color"] = "rgb(" + str(red) + ",0," + str(blue) + ")"
-    print(items[0])
+    #print(items[0])
     return items
 
 def word_color(x, side_or_neutral):
@@ -179,7 +183,7 @@ def score_tweet(tweet, event):
 
 def get_to_tweets(event):
     #sid = SentimentIntensityAnalyzer()
-    new_tweets = get_tweets_for_a_hashtag(event, num_tweets = 70, views = ['text', 'id', 'user', 'created_at'])
+    new_tweets = get_tweets_for_a_hashtag(event, num_tweets = 100, views = ['text', 'id', 'user', 'created_at'])
     tweets = list(classifier_tweets.find({'event': event}))
     for i in new_tweets:
         tweets.append(score_tweet(i, event))
@@ -256,8 +260,13 @@ def index(request):
                                'magic_url': request.get_full_path(),
                               })
 
+tweets_cache = {}
 def get_tweets_for_a_hashtag(hashtag, num_tweets = 10, views = ['text']):
-    global cur_key
+    global cur_key, tweets_cache
+
+    if hashtag in tweets_cache and time.time() < tweets_cache[hashtag]["time"] + 24*3600:
+        return tweets_cache[hashtag]["contents"]
+
     auth = tweepy.OAuthHandler(keys[cur_key][0], keys[cur_key][1])
     auth.set_access_token(keys[cur_key][2], keys[cur_key][3])
     api = tweepy.API(auth)
@@ -275,4 +284,11 @@ def get_tweets_for_a_hashtag(hashtag, num_tweets = 10, views = ['text']):
             except:
                 raise
         out_list.append(out_dickt)
+    tweets_cache[hashtag] = {"time": time.time(), "contents": out_list}
     return out_list
+
+def get_new_tweets():
+    while True:
+        for item in get_top_events(50):
+            get_tweets_for_a_hashtag(item["event"], 100, views=['text', 'id', 'user', 'created_at'])
+            time.sleep(1)
